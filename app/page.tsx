@@ -1,65 +1,311 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+
+type Task = {
+  text: string;
+  date: string;
+  v: number;
+  done: boolean;
+};
+
+type Tasks = {
+  q1: Task[];
+  q2: Task[];
+  q3: Task[];
+  q4: Task[];
+};
+
+type QuadKey = keyof Tasks;
+
+const QUAD_NAMES: Record<QuadKey, string> = {
+  q1: '급하고 중요한 일 (지금 당장)',
+  q2: '급하진 않지만 중요한 일 (계획해서)',
+  q3: '급하지만 중요치 않은 일 (줄이거나 자동화)',
+  q4: '급하지도 중요하지도 않은 일 (아예 없애기)',
+};
+
+const QUAD_INFO: Record<QuadKey, { title: string; sub: string }> = {
+  q1: { title: '급하고 중요한 일', sub: '지금 당장' },
+  q2: { title: '급하진 않지만 중요한 일', sub: '계획해서' },
+  q3: { title: '급하지만 중요치 않은 일', sub: '줄이거나 자동화' },
+  q4: { title: '급하지도 중요하지도 않은 일', sub: '아예 없애기' },
+};
+
+const QUADS: QuadKey[] = ['q1', 'q2', 'q3', 'q4'];
+
+function starStr(v: number): string {
+  return '★'.repeat(v);
+}
+
+function dayDiff(dateStr: string): number | null {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return Math.round((d.getTime() - today.getTime()) / 86400000);
+}
+
+function getDateClass(task: Task): string {
+  if (!task.date || task.done) return '';
+  const diff = dayDiff(task.date);
+  if (diff === null) return '';
+  if (diff < 0) return 'overdue';
+  if (diff <= 1) return 'soon';
+  return '';
+}
+
+function sortTasks(arr: Task[]): Task[] {
+  return [...arr].sort((a, b) => {
+    if (b.v !== a.v) return b.v - a.v;
+    if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (a.date) return -1;
+    if (b.date) return 1;
+    return 0;
+  });
+}
+
+function currentQuad(urgent: boolean, important: boolean): QuadKey {
+  if (urgent && important) return 'q1';
+  if (!urgent && important) return 'q2';
+  if (urgent && !important) return 'q3';
+  return 'q4';
+}
 
 export default function Home() {
+  const [tasks, setTasks] = useState<Tasks>({ q1: [], q2: [], q3: [], q4: [] });
+  const [formOpen, setFormOpen] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [inputDate, setInputDate] = useState('');
+  const [stars, setStars] = useState(0);
+  const [urgent, setUrgent] = useState(false);
+  const [important, setImportant] = useState(false);
+  const [panelQuad, setPanelQuad] = useState<QuadKey | null>(null);
+  const [error, setError] = useState('');
+
+  const quad = currentQuad(urgent, important);
+  const quadHint = `→ ${QUAD_NAMES[quad]}`;
+
+  let total = 0, doneCount = 0, soonCount = 0;
+  QUADS.forEach(q => {
+    tasks[q].forEach(t => {
+      total++;
+      if (t.done) doneCount++;
+      else {
+        const diff = dayDiff(t.date);
+        if (diff !== null && diff <= 1 && diff >= 0) soonCount++;
+      }
+    });
+  });
+
+  function handleSubmit() {
+    const text = inputText.trim();
+    if (!text) {
+      setError('할 일 내용을 입력해 주세요.');
+      return;
+    }
+    const q = currentQuad(urgent, important);
+    if (tasks[q].length >= 7) {
+      setError('이 칸은 꽉 찼어요 (최대 7개).');
+      return;
+    }
+    setTasks(prev => ({
+      ...prev,
+      [q]: [...prev[q], { text, date: inputDate, v: stars || 1, done: false }],
+    }));
+    setInputText('');
+    setInputDate('');
+    setStars(0);
+    setUrgent(false);
+    setImportant(false);
+    setError('');
+    setFormOpen(false);
+  }
+
+  function handleToggleDone(q: QuadKey, idx: number) {
+    setTasks(prev => ({
+      ...prev,
+      [q]: prev[q].map((t, i) => i === idx ? { ...t, done: !t.done } : t),
+    }));
+  }
+
+  function handleDelete(q: QuadKey, idx: number) {
+    setTasks(prev => ({
+      ...prev,
+      [q]: prev[q].filter((_, i) => i !== idx),
+    }));
+  }
+
+  const panelTasks = panelQuad ? tasks[panelQuad] : [];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <div className="bg-shapes">
+        <div className="sh circle s1" />
+        <div className="sh square s2" />
+        <div className="sh tri s3" />
+        <div className="sh square s4" />
+        <div className="sh circle s5" />
+        <div className="sh circle s6" />
+      </div>
+
+      <div className="wrap">
+        <div className="topbar">
+          <div>
+            <div className="title">
+              <span className="now">NOW.</span>{' '}
+              <span className="must">MUST.</span>{' '}
+              <span className="done">TILL DONE.</span>
+            </div>
+            <div className="subtitle">Eisenhower Matrix</div>
+          </div>
+          <button className="add-btn" onClick={() => setFormOpen(f => !f)}>
+            + 할 일 추가
+          </button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className="stats">
+          <span>전체 <b>{total}</b>개</span>
+          <span>완료 <b className="done-n">{doneCount}</b>개</span>
+          <span>마감임박 <b className="soon-n">{soonCount}</b>개</span>
+        </div>
+
+        <div className={`form-box${formOpen ? ' open' : ''}`}>
+          <div className="field">
+            <label>할 일</label>
+            <input
+              type="text"
+              placeholder="무엇을 해야 하나요?"
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <div className="row">
+            <div className="field">
+              <label>마감 날짜</label>
+              <input
+                type="date"
+                value={inputDate}
+                onChange={e => setInputDate(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>중요도</label>
+              <div className="stars">
+                {[1, 2, 3].map(v => (
+                  <span
+                    key={v}
+                    className={`star${stars >= v ? ' on' : ''}`}
+                    onClick={() => setStars(v)}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="field">
+            <label>분류 (급함 / 중요)</label>
+            <div className="toggles">
+              <div
+                className={`toggle${urgent ? ' on' : ''}`}
+                onClick={() => setUrgent(u => !u)}
+              >
+                급함
+              </div>
+              <div
+                className={`toggle${important ? ' on' : ''}`}
+                onClick={() => setImportant(i => !i)}
+              >
+                중요
+              </div>
+            </div>
+            <div className="quad-hint">{quadHint}</div>
+          </div>
+          <button className="submit-btn" onClick={handleSubmit}>추가</button>
+          {error && <div className="err">{error}</div>}
         </div>
-      </main>
-    </div>
+
+        <div className="matrix">
+          {QUADS.map(q => {
+            const info = QUAD_INFO[q];
+            const sorted = sortTasks(tasks[q]);
+            return (
+              <div key={q} className={`quad ${q}`} onClick={() => setPanelQuad(q)}>
+                <div className="quad-title">{info.title}</div>
+                <div className="quad-sub">{info.sub}</div>
+                <div className="quad-cnt">{tasks[q].length} / 7</div>
+                <div className="quad-list">
+                  {sorted.length === 0 ? (
+                    <div className="empty">할 일 없음</div>
+                  ) : (
+                    sorted.map((t, i) => (
+                      <div
+                        key={i}
+                        className={`task-mini${t.done ? ' done' : ''}${getDateClass(t) ? ` ${getDateClass(t)}` : ''}`}
+                      >
+                        <span className="t">{t.text}</span>
+                        <span className="st">{starStr(t.v)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        className={`overlay${panelQuad ? ' open' : ''}`}
+        onClick={e => { if (e.target === e.currentTarget) setPanelQuad(null); }}
+      >
+        <div className="panel">
+          <div className="panel-head">
+            <h2>{panelQuad ? QUAD_NAMES[panelQuad] : ''}</h2>
+            <button className="close-x" onClick={() => setPanelQuad(null)}>&times;</button>
+          </div>
+          <div>
+            {panelTasks.length === 0 ? (
+              <p className="empty">아직 할 일이 없어요.</p>
+            ) : (
+              sortTasks(panelTasks).map(t => {
+                const realIdx = panelTasks.indexOf(t);
+                const dc = getDateClass(t);
+                const icon = dc === 'overdue' ? '⚠ ' : dc === 'soon' ? '⏰ ' : '📅 ';
+                const dateLabel = t.date ? `${icon}${t.date}` : '마감 없음';
+                return (
+                  <div key={realIdx} className={`task-full${t.done ? ' done' : ''}`}>
+                    <div className="tf-row">
+                      <span className="tf-title">{t.text}</span>
+                      <span className="tf-stars">{starStr(t.v)}</span>
+                    </div>
+                    <div className="tf-meta">
+                      <span className={`date${dc ? ` ${dc}` : ''}`}>{dateLabel}</span>
+                      <span className="tf-actions">
+                        <button
+                          className="tf-btn chk"
+                          onClick={() => panelQuad && handleToggleDone(panelQuad, realIdx)}
+                        >
+                          {t.done ? '취소' : '완료'}
+                        </button>
+                        <button
+                          className="tf-btn del"
+                          onClick={() => panelQuad && handleDelete(panelQuad, realIdx)}
+                        >
+                          삭제
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

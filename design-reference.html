@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOW. MUST. TILL DONE.</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #1a2a52;
+    --bar: rgba(38,54,98,0.6);
+    --card: #f5ecd9;
+    --card-text: #3a2f25;
+    --card-sub: #a08968;
+    --accent: #ff5a3c;
+    --gold: #d9a441;
+    --q1: #38bdf8;
+    --q2: #a89cf0;
+    --q3: #f0a020;
+    --q4: #e0392f;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg); color: #e5e7eb; min-height: 100vh; padding: 20px;
+    position: relative; overflow-x: hidden;
+  }
+  /* 움직이는 배경 도형 */
+  .bg-shapes { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  .bg-shapes .sh { position: absolute; }
+  .sh.circle { border: 1.5px solid rgba(150,180,240,0.20); border-radius: 50%; }
+  .sh.square { border: 1.5px solid rgba(210,170,245,0.18); border-radius: 14px; }
+  .sh.tri { width: 0; height: 0; border-left: 45px solid transparent; border-right: 45px solid transparent; border-bottom: 78px solid rgba(217,160,90,0.10); }
+  .sh.s1 { width: 110px; height: 110px; top: 8%;  left: 6%;  animation: m1 28s linear infinite; }
+  .sh.s2 { width: 80px;  height: 80px;  top: 60%; left: 20%; animation: m2 34s linear infinite; }
+  .sh.s3 { top: 18%; right: 10%; animation: m3 38s linear infinite; }
+  .sh.s4 { width: 70px;  height: 70px;  bottom: 12%; right: 28%; animation: m1 31s linear infinite; }
+  .sh.s5 { width: 90px;  height: 90px;  top: 40%; right: 6%;  animation: m2 42s linear infinite; }
+  .sh.s6 { width: 60px;  height: 60px;  bottom: 22%; left: 38%; animation: m3 36s linear infinite; }
+  @keyframes m1 { 0%{transform:translate(0,0) rotate(0deg);} 50%{transform:translate(50px,60px) rotate(180deg);} 100%{transform:translate(0,0) rotate(360deg);} }
+  @keyframes m2 { 0%{transform:translate(0,0) rotate(0deg);} 50%{transform:translate(-60px,40px) rotate(-180deg);} 100%{transform:translate(0,0) rotate(-360deg);} }
+  @keyframes m3 { 0%{transform:translate(0,0) rotate(0deg);} 50%{transform:translate(-50px,-50px) rotate(180deg);} 100%{transform:translate(0,0) rotate(360deg);} }
+  @media (prefers-reduced-motion: reduce) { .sh { animation: none !important; } }
+
+  .wrap { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+  .title { font-size: 26px; font-weight: 700; letter-spacing: 1px; line-height: 1.15; }
+  .title .now { color: #fff; }
+  .title .must { color: var(--accent); }
+  .title .done { color: #ffb800; }
+  .subtitle { font-size: 12px; color: #9fb0d4; letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; }
+  .add-btn { background: var(--accent); color: #fff; border: none; padding: 11px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .add-btn:hover { background: #e84a2e; }
+  .stats { display: flex; gap: 22px; background: var(--bar); backdrop-filter: blur(6px); border-radius: 12px; padding: 13px 20px; margin-bottom: 20px; font-size: 14px; color: #b8c4e0; }
+  .stats b { color: #fff; }
+  .stats .done-n { color: #34d399; }
+  .stats .soon-n { color: #ffb800; }
+  .form-box { background: rgba(38,54,98,0.85); backdrop-filter: blur(8px); border-radius: 14px; padding: 18px; margin-bottom: 20px; display: none; }
+  .form-box.open { display: block; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: #b8c4e0; margin-bottom: 6px; }
+  .field input[type=text], .field input[type=date] {
+    width: 100%; padding: 10px 12px; border: 1px solid #45568a; border-radius: 8px;
+    font-size: 15px; background: #1a2a52; color: #e5e7eb;
+  }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 140px; }
+  .stars { display: flex; gap: 6px; align-items: center; }
+  .star { font-size: 26px; color: #5a6a9a; cursor: pointer; line-height: 1; user-select: none; }
+  .star.on { color: var(--gold); }
+  .toggles { display: flex; gap: 10px; margin: 4px 0; }
+  .toggle { flex: 1; padding: 12px; border: 1.5px solid #45568a; border-radius: 8px; background: #1a2a52; cursor: pointer; font-size: 15px; color: #b8c4e0; font-weight: 600; }
+  .toggle.on { border-color: var(--accent); background: #3a2438; color: var(--accent); }
+  .quad-hint { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px; }
+  .submit-btn { width: 100%; background: var(--accent); color: #fff; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 12px; }
+  .submit-btn:hover { background: #e84a2e; }
+  .err { color: #fca5a5; font-size: 13px; margin-top: 8px; }
+  .matrix { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; }
+  .quad { background: var(--card); border-radius: 12px; padding: 16px; cursor: pointer; min-height: 200px; display: flex; flex-direction: column; transition: transform 0.1s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .quad:hover { transform: translateY(-2px); }
+  .quad.q1 { border-left: 5px solid var(--q1); }
+  .quad.q2 { border-left: 5px solid var(--q2); }
+  .quad.q3 { border-left: 5px solid var(--q3); }
+  .quad.q4 { border-left: 5px solid var(--q4); }
+  .quad-title { font-weight: 700; font-size: 15px; color: var(--card-text); }
+  .quad-sub { font-size: 11px; letter-spacing: 1px; margin: 3px 0 10px; }
+  .quad.q1 .quad-sub { color: #3a7ca8; }
+  .quad.q2 .quad-sub { color: #7a6cc4; }
+  .quad.q3 .quad-sub { color: #c47d10; }
+  .quad.q4 .quad-sub { color: #c0392b; }
+  .quad-cnt { font-size: 11px; color: var(--card-sub); margin-bottom: 8px; }
+  .quad-list { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .empty { font-size: 13px; color: #a89a85; font-style: italic; }
+  .task-mini { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; color: var(--card-text); }
+  .task-mini .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-mini.done .t { text-decoration: line-through; color: #a89a85; }
+  .task-mini .st { color: var(--gold); flex-shrink: 0; font-size: 12px; }
+  .task-mini.overdue .t { color: #c0392b; font-weight: 600; }
+  .task-mini.soon .t { color: #c47d10; font-weight: 600; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+  .overlay.open { display: flex; }
+  .panel { background: var(--card); border-radius: 16px; padding: 22px; width: 100%; max-width: 480px; max-height: 80vh; overflow-y: auto; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .panel-head h2 { font-size: 18px; color: var(--card-text); }
+  .close-x { background: none; border: none; font-size: 24px; cursor: pointer; color: #a89a85; }
+  .task-full { border: 1px solid #e0d5bd; border-radius: 10px; padding: 12px; margin-bottom: 10px; background: #fdf8ee; }
+  .task-full.done { opacity: 0.55; }
+  .task-full.done .tf-title { text-decoration: line-through; }
+  .tf-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tf-title { font-size: 15px; font-weight: 600; color: var(--card-text); }
+  .tf-stars { color: var(--gold); }
+  .tf-meta { font-size: 13px; color: var(--card-sub); margin-top: 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .tf-meta .date.overdue { color: #c0392b; font-weight: 600; }
+  .tf-meta .date.soon { color: #c47d10; font-weight: 600; }
+  .tf-actions { display: flex; gap: 6px; }
+  .tf-btn { border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+  .tf-btn.del { background: #f5d3cf; color: #a3271d; }
+  .tf-btn.chk { background: #d5ecd9; color: #276749; }
+  @media (max-width: 520px) {
+    .matrix { gap: 10px; }
+    .quad { min-height: 150px; padding: 12px; }
+    .title { font-size: 20px; }
+    .stats { gap: 14px; padding: 10px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-shapes">
+  <div class="sh circle s1"></div>
+  <div class="sh square s2"></div>
+  <div class="sh tri s3"></div>
+  <div class="sh square s4"></div>
+  <div class="sh circle s5"></div>
+  <div class="sh circle s6"></div>
+</div>
+<div class="wrap">
+  <div class="topbar">
+    <div>
+      <div class="title"><span class="now">NOW.</span> <span class="must">MUST.</span> <span class="done">TILL DONE.</span></div>
+      <div class="subtitle">Eisenhower Matrix</div>
+    </div>
+    <button class="add-btn" id="addBtn">+ 할 일 추가</button>
+  </div>
+  <div class="stats">
+    <span>전체 <b id="statTotal">0</b>개</span>
+    <span>완료 <b class="done-n" id="statDone">0</b>개</span>
+    <span>마감임박 <b class="soon-n" id="statSoon">0</b>개</span>
+  </div>
+  <div class="form-box" id="formBox">
+    <div class="field">
+      <label>할 일</label>
+      <input type="text" id="taskInput" placeholder="무엇을 해야 하나요?">
+    </div>
+    <div class="row">
+      <div class="field"><label>마감 날짜</label><input type="date" id="dateInput"></div>
+      <div class="field"><label>중요도</label>
+        <div class="stars" id="stars">
+          <span class="star" data-v="1">&#9733;</span>
+          <span class="star" data-v="2">&#9733;</span>
+          <span class="star" data-v="3">&#9733;</span>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>분류 (급함 / 중요)</label>
+      <div class="toggles">
+        <div class="toggle" id="urgentToggle">급함</div>
+        <div class="toggle" id="importantToggle">중요</div>
+      </div>
+      <div class="quad-hint" id="quadHint">&rarr; 급하지도 중요하지도 않은 일</div>
+    </div>
+    <button class="submit-btn" id="submitBtn">추가</button>
+    <div class="err" id="errMsg"></div>
+  </div>
+  <div class="matrix">
+    <div class="quad q1" data-q="q1">
+      <div class="quad-title">급하고 중요한 일</div>
+      <div class="quad-sub">지금 당장</div>
+      <div class="quad-cnt" data-cnt="q1">0 / 7</div>
+      <div class="quad-list" data-list="q1"></div>
+    </div>
+    <div class="quad q2" data-q="q2">
+      <div class="quad-title">급하진 않지만 중요한 일</div>
+      <div class="quad-sub">계획해서</div>
+      <div class="quad-cnt" data-cnt="q2">0 / 7</div>
+      <div class="quad-list" data-list="q2"></div>
+    </div>
+    <div class="quad q3" data-q="q3">
+      <div class="quad-title">급하지만 중요치 않은 일</div>
+      <div class="quad-sub">줄이거나 자동화</div>
+      <div class="quad-cnt" data-cnt="q3">0 / 7</div>
+      <div class="quad-list" data-list="q3"></div>
+    </div>
+    <div class="quad q4" data-q="q4">
+      <div class="quad-title">급하지도 중요하지도 않은 일</div>
+      <div class="quad-sub">아예 없애기</div>
+      <div class="quad-cnt" data-cnt="q4">0 / 7</div>
+      <div class="quad-list" data-list="q4"></div>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <div class="panel-head"><h2 id="panelTitle">분류</h2><button class="close-x" id="closeX">&times;</button></div>
+    <div id="panelBody"></div>
+  </div>
+</div>
+<script>
+  var KEY = 'eisenhower-todos';
+  var tasks = load();
+  var sel = { v: 0, urgent: false, important: false };
+  function load() {
+    try { var raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) {}
+    return { q1: [], q2: [], q3: [], q4: [] };
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch (e) {} }
+  function quadNames(q) {
+    return {
+      q1: '급하고 중요한 일 (지금 당장)',
+      q2: '급하진 않지만 중요한 일 (계획해서)',
+      q3: '급하지만 중요치 않은 일 (줄이거나 자동화)',
+      q4: '급하지도 중요하지도 않은 일 (아예 없애기)'
+    }[q];
+  }
+  function currentQuad() {
+    if (sel.urgent && sel.important) return 'q1';
+    if (!sel.urgent && sel.important) return 'q2';
+    if (sel.urgent && !sel.important) return 'q3';
+    return 'q4';
+  }
+  function dayDiff(dateStr) {
+    if (!dateStr) return null;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var d = new Date(dateStr); d.setHours(0,0,0,0);
+    return Math.round((d - today) / 86400000);
+  }
+  function dateClass(t) {
+    if (!t.date || t.done) return '';
+    var diff = dayDiff(t.date);
+    if (diff < 0) return 'overdue';
+    if (diff <= 1) return 'soon';
+    return '';
+  }
+  function starStr(v) { return '★'.repeat(v); }
+  function sortTasks(arr) {
+    return arr.slice().sort(function(a, b) {
+      if (b.v !== a.v) return b.v - a.v;
+      if (a.date && b.date) return new Date(a.date) - new Date(b.date);
+      if (a.date) return -1;
+      if (b.date) return 1;
+      return 0;
+    });
+  }
+  document.getElementById('addBtn').addEventListener('click', function() {
+    document.getElementById('formBox').classList.toggle('open');
+  });
+  document.querySelectorAll('.star').forEach(function(s) {
+    s.addEventListener('click', function() {
+      sel.v = parseInt(s.dataset.v);
+      document.querySelectorAll('.star').forEach(function(x) {
+        x.classList.toggle('on', parseInt(x.dataset.v) <= sel.v);
+      });
+    });
+  });
+  function bindToggle(id, key) {
+    var el = document.getElementById(id);
+    el.addEventListener('click', function() {
+      sel[key] = !sel[key];
+      el.classList.toggle('on', sel[key]);
+      document.getElementById('quadHint').textContent = '→ ' + quadNames(currentQuad());
+    });
+  }
+  bindToggle('urgentToggle', 'urgent');
+  bindToggle('importantToggle', 'important');
+  document.getElementById('submitBtn').addEventListener('click', function() {
+    var err = document.getElementById('errMsg');
+    var text = document.getElementById('taskInput').value.trim();
+    var date = document.getElementById('dateInput').value;
+    if (!text) { err.textContent = '할 일 내용을 입력해 주세요.'; return; }
+    var q = currentQuad();
+    if (tasks[q].length >= 7) { err.textContent = '이 칸은 꽉 찼어요 (최대 7개).'; return; }
+    tasks[q].push({ text: text, date: date, v: sel.v || 1, done: false });
+    save();
+    document.getElementById('taskInput').value = '';
+    document.getElementById('dateInput').value = '';
+    sel = { v: 0, urgent: false, important: false };
+    document.querySelectorAll('.star').forEach(function(x){ x.classList.remove('on'); });
+    document.getElementById('urgentToggle').classList.remove('on');
+    document.getElementById('importantToggle').classList.remove('on');
+    document.getElementById('quadHint').textContent = '→ ' + quadNames('q4');
+    err.textContent = '';
+    document.getElementById('formBox').classList.remove('open');
+    render();
+  });
+  function updateStats() {
+    var total = 0, done = 0, soon = 0;
+    ['q1','q2','q3','q4'].forEach(function(q) {
+      tasks[q].forEach(function(t) {
+        total++;
+        if (t.done) done++;
+        else { var diff = dayDiff(t.date); if (diff !== null && diff <= 1 && diff >= 0) soon++; }
+      });
+    });
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statSoon').textContent = soon;
+  }
+  function render() {
+    ['q1','q2','q3','q4'].forEach(function(q) {
+      var list = document.querySelector('[data-list="'+q+'"]');
+      var cnt = document.querySelector('[data-cnt="'+q+'"]');
+      cnt.textContent = tasks[q].length + ' / 7';
+      list.innerHTML = '';
+      if (tasks[q].length === 0) {
+        var e = document.createElement('div'); e.className = 'empty'; e.textContent = '할 일 없음';
+        list.appendChild(e); return;
+      }
+      sortTasks(tasks[q]).forEach(function(t) {
+        var row = document.createElement('div');
+        row.className = 'task-mini' + (t.done ? ' done' : '') + ' ' + dateClass(t);
+        row.innerHTML = '<span class="t">' + escapeHtml(t.text) + '</span><span class="st">' + starStr(t.v) + '</span>';
+        list.appendChild(row);
+      });
+    });
+    updateStats();
+  }
+  document.querySelectorAll('.quad').forEach(function(c) {
+    c.addEventListener('click', function() { openPanel(c.dataset.q); });
+  });
+  function openPanel(q) {
+    document.getElementById('panelTitle').textContent = quadNames(q);
+    var body = document.getElementById('panelBody');
+    body.innerHTML = '';
+    if (tasks[q].length === 0) {
+      body.innerHTML = '<p class="empty">아직 할 일이 없어요.</p>';
+    } else {
+      sortTasks(tasks[q]).forEach(function(t) {
+        var realIdx = tasks[q].indexOf(t);
+        var div = document.createElement('div');
+        div.className = 'task-full' + (t.done ? ' done' : '');
+        var dc = dateClass(t);
+        var icon = dc === 'overdue' ? '⚠ ' : (dc === 'soon' ? '⏰ ' : '📅 ');
+        var dateLabel = t.date ? icon + t.date : '마감 없음';
+        div.innerHTML =
+          '<div class="tf-row"><span class="tf-title">' + escapeHtml(t.text) + '</span>' +
+          '<span class="tf-stars">' + starStr(t.v) + '</span></div>' +
+          '<div class="tf-meta"><span class="date ' + dc + '">' + dateLabel + '</span>' +
+          '<span class="tf-actions">' +
+          '<button class="tf-btn chk" data-act="done" data-q="'+q+'" data-i="'+realIdx+'">' + (t.done ? '취소' : '완료') + '</button>' +
+          '<button class="tf-btn del" data-act="del" data-q="'+q+'" data-i="'+realIdx+'">삭제</button>' +
+          '</span></div>';
+        body.appendChild(div);
+      });
+    }
+    document.getElementById('overlay').classList.add('open');
+  }
+  document.getElementById('panelBody').addEventListener('click', function(e) {
+    var btn = e.target.closest('.tf-btn'); if (!btn) return;
+    var q = btn.dataset.q, i = parseInt(btn.dataset.i);
+    if (btn.dataset.act === 'done') tasks[q][i].done = !tasks[q][i].done;
+    else if (btn.dataset.act === 'del') tasks[q].splice(i, 1);
+    save(); render(); openPanel(q);
+  });
+  document.getElementById('closeX').addEventListener('click', closePanel);
+  document.getElementById('overlay').addEventListener('click', function(e) { if (e.target === this) closePanel(); });
+  function closePanel() { document.getElementById('overlay').classList.remove('open'); }
+  function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  render();
+</script>
+</body>
+</html>
