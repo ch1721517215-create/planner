@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 type Task = {
+  id: string;
   text: string;
-  date: string;
-  v: number;
+  due_date: string;
+  importance: number;
   done: boolean;
 };
 
@@ -48,8 +50,8 @@ function dayDiff(dateStr: string): number | null {
 }
 
 function getDateClass(task: Task): string {
-  if (!task.date || task.done) return '';
-  const diff = dayDiff(task.date);
+  if (!task.due_date || task.done) return '';
+  const diff = dayDiff(task.due_date);
   if (diff === null) return '';
   if (diff < 0) return 'overdue';
   if (diff <= 1) return 'soon';
@@ -58,10 +60,10 @@ function getDateClass(task: Task): string {
 
 function sortTasks(arr: Task[]): Task[] {
   return [...arr].sort((a, b) => {
-    if (b.v !== a.v) return b.v - a.v;
-    if (a.date && b.date) return new Date(a.date).getTime() - new Date(b.date).getTime();
-    if (a.date) return -1;
-    if (b.date) return 1;
+    if (b.importance !== a.importance) return b.importance - a.importance;
+    if (a.due_date && b.due_date) return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    if (a.due_date) return -1;
+    if (b.due_date) return 1;
     return 0;
   });
 }
@@ -71,6 +73,16 @@ function currentQuad(urgent: boolean, important: boolean): QuadKey {
   if (!urgent && important) return 'q2';
   if (urgent && !important) return 'q3';
   return 'q4';
+}
+
+function rowToTask(row: Record<string, unknown>): Task {
+  return {
+    id: row.id as string,
+    text: row.text as string,
+    due_date: (row.due_date as string) ?? '',
+    importance: row.importance as number,
+    done: row.done as boolean,
+  };
 }
 
 export default function Home() {
@@ -84,6 +96,23 @@ export default function Home() {
   const [panelQuad, setPanelQuad] = useState<QuadKey | null>(null);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    async function loadTasks() {
+      const { data } = await supabase
+        .from('todos')
+        .select('id, text, quadrant, importance, due_date, done')
+        .order('created_at', { ascending: true });
+      if (!data) return;
+      const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
+      for (const row of data) {
+        const q = row.quadrant as QuadKey;
+        if (organized[q]) organized[q].push(rowToTask(row));
+      }
+      setTasks(organized);
+    }
+    loadTasks();
+  }, []);
+
   const quad = currentQuad(urgent, important);
   const quadHint = `→ ${QUAD_NAMES[quad]}`;
 
@@ -93,13 +122,13 @@ export default function Home() {
       total++;
       if (t.done) doneCount++;
       else {
-        const diff = dayDiff(t.date);
+        const diff = dayDiff(t.due_date);
         if (diff !== null && diff <= 1 && diff >= 0) soonCount++;
       }
     });
   });
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const text = inputText.trim();
     if (!text) {
       setError('할 일 내용을 입력해 주세요.');
@@ -110,9 +139,24 @@ export default function Home() {
       setError('이 칸은 꽉 찼어요 (최대 7개).');
       return;
     }
+    const { data, error: err } = await supabase
+      .from('todos')
+      .insert({
+        text,
+        quadrant: q,
+        importance: stars || 1,
+        due_date: inputDate || null,
+        done: false,
+      })
+      .select('id, text, quadrant, importance, due_date, done')
+      .single();
+    if (err || !data) {
+      setError('저장에 실패했어요. 다시 시도해 주세요.');
+      return;
+    }
     setTasks(prev => ({
       ...prev,
-      [q]: [...prev[q], { text, date: inputDate, v: stars || 1, done: false }],
+      [q]: [...prev[q], rowToTask(data)],
     }));
     setInputText('');
     setInputDate('');
@@ -123,17 +167,22 @@ export default function Home() {
     setFormOpen(false);
   }
 
-  function handleToggleDone(q: QuadKey, idx: number) {
+  async function handleToggleDone(q: QuadKey, id: string) {
+    const task = tasks[q].find(t => t.id === id);
+    if (!task) return;
+    const newDone = !task.done;
+    await supabase.from('todos').update({ done: newDone }).eq('id', id);
     setTasks(prev => ({
       ...prev,
-      [q]: prev[q].map((t, i) => i === idx ? { ...t, done: !t.done } : t),
+      [q]: prev[q].map(t => t.id === id ? { ...t, done: newDone } : t),
     }));
   }
 
-  function handleDelete(q: QuadKey, idx: number) {
+  async function handleDelete(q: QuadKey, id: string) {
+    await supabase.from('todos').delete().eq('id', id);
     setTasks(prev => ({
       ...prev,
-      [q]: prev[q].filter((_, i) => i !== idx),
+      [q]: prev[q].filter(t => t.id !== id),
     }));
   }
 
@@ -241,13 +290,13 @@ export default function Home() {
                   {sorted.length === 0 ? (
                     <div className="empty">할 일 없음</div>
                   ) : (
-                    sorted.map((t, i) => (
+                    sorted.map(t => (
                       <div
-                        key={i}
+                        key={t.id}
                         className={`task-mini${t.done ? ' done' : ''}${getDateClass(t) ? ` ${getDateClass(t)}` : ''}`}
                       >
                         <span className="t">{t.text}</span>
-                        <span className="st">{starStr(t.v)}</span>
+                        <span className="st">{starStr(t.importance)}</span>
                       </div>
                     ))
                   )}
@@ -272,28 +321,27 @@ export default function Home() {
               <p className="empty">아직 할 일이 없어요.</p>
             ) : (
               sortTasks(panelTasks).map(t => {
-                const realIdx = panelTasks.indexOf(t);
                 const dc = getDateClass(t);
                 const icon = dc === 'overdue' ? '⚠ ' : dc === 'soon' ? '⏰ ' : '📅 ';
-                const dateLabel = t.date ? `${icon}${t.date}` : '마감 없음';
+                const dateLabel = t.due_date ? `${icon}${t.due_date}` : '마감 없음';
                 return (
-                  <div key={realIdx} className={`task-full${t.done ? ' done' : ''}`}>
+                  <div key={t.id} className={`task-full${t.done ? ' done' : ''}`}>
                     <div className="tf-row">
                       <span className="tf-title">{t.text}</span>
-                      <span className="tf-stars">{starStr(t.v)}</span>
+                      <span className="tf-stars">{starStr(t.importance)}</span>
                     </div>
                     <div className="tf-meta">
                       <span className={`date${dc ? ` ${dc}` : ''}`}>{dateLabel}</span>
                       <span className="tf-actions">
                         <button
                           className="tf-btn chk"
-                          onClick={() => panelQuad && handleToggleDone(panelQuad, realIdx)}
+                          onClick={() => panelQuad && handleToggleDone(panelQuad, t.id)}
                         >
                           {t.done ? '취소' : '완료'}
                         </button>
                         <button
                           className="tf-btn del"
-                          onClick={() => panelQuad && handleDelete(panelQuad, realIdx)}
+                          onClick={() => panelQuad && handleDelete(panelQuad, t.id)}
                         >
                           삭제
                         </button>
