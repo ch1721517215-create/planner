@@ -10,6 +10,15 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
+    "@tiptap/extension-image": "^3.26.1",
+    "@tiptap/extension-table": "^3.26.1",
+    "@tiptap/extension-table-cell": "^3.26.1",
+    "@tiptap/extension-table-header": "^3.26.1",
+    "@tiptap/extension-table-row": "^3.26.1",
+    "@tiptap/extension-task-item": "^3.26.1",
+    "@tiptap/extension-task-list": "^3.26.1",
+    "@tiptap/react": "^3.26.1",
+    "@tiptap/starter-kit": "^3.26.1",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4"

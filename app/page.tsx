@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import PlanModal from './PlanModal';
 
 type Task = {
   id: string;
@@ -9,6 +10,7 @@ type Task = {
   due_date: string;
   importance: number;
   done: boolean;
+  plan_content?: unknown;
 };
 
 type Tasks = {
@@ -82,6 +84,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     due_date: (row.due_date as string) ?? '',
     importance: row.importance as number,
     done: row.done as boolean,
+    plan_content: row.plan_content,
   };
 }
 
@@ -94,13 +97,14 @@ export default function Home() {
   const [urgent, setUrgent] = useState(false);
   const [important, setImportant] = useState(false);
   const [panelQuad, setPanelQuad] = useState<QuadKey | null>(null);
+  const [planTask, setPlanTask] = useState<Task | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadTasks() {
       const { data } = await supabase
         .from('todos')
-        .select('id, text, quadrant, importance, due_date, done')
+        .select('id, text, quadrant, importance, due_date, done, plan_content')
         .order('created_at', { ascending: true });
       if (!data) return;
       const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
@@ -184,6 +188,17 @@ export default function Home() {
       ...prev,
       [q]: prev[q].filter(t => t.id !== id),
     }));
+  }
+
+  function handlePlanSaved(id: string, content: unknown) {
+    setTasks(prev => {
+      const updated = { ...prev };
+      for (const q of QUADS) {
+        updated[q] = prev[q].map(t => t.id === id ? { ...t, plan_content: content } : t);
+      }
+      return updated;
+    });
+    setPlanTask(pt => pt && pt.id === id ? { ...pt, plan_content: content } : pt);
   }
 
   const panelTasks = panelQuad ? tasks[panelQuad] : [];
@@ -307,6 +322,15 @@ export default function Home() {
         </div>
       </div>
 
+      {planTask && (
+        <PlanModal
+          key={planTask.id}
+          task={planTask}
+          onClose={() => setPlanTask(null)}
+          onSaved={handlePlanSaved}
+        />
+      )}
+
       <div
         className={`overlay${panelQuad ? ' open' : ''}`}
         onClick={e => { if (e.target === e.currentTarget) setPanelQuad(null); }}
@@ -327,7 +351,14 @@ export default function Home() {
                 return (
                   <div key={t.id} className={`task-full${t.done ? ' done' : ''}`}>
                     <div className="tf-row">
-                      <span className="tf-title">{t.text}</span>
+                      <span
+                        className="tf-title tf-title-link"
+                        onClick={() => setPlanTask(t)}
+                        title="세부 계획서 열기"
+                      >
+                        {t.text}
+                        <span className="plan-badge">{t.plan_content ? '📋' : '+'}</span>
+                      </span>
                       <span className="tf-stars">{starStr(t.importance)}</span>
                     </div>
                     <div className="tf-meta">
