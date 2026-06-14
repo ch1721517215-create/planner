@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import PlanModal from './PlanModal';
 
@@ -37,6 +37,23 @@ const QUAD_INFO: Record<QuadKey, { title: string; sub: string }> = {
 };
 
 const QUADS: QuadKey[] = ['q1', 'q2', 'q3', 'q4'];
+
+const QUOTES = [
+  '나를 죽이지 못하는 것은 나를 더 강하게 만든다.',
+  '왜 살아야 하는지 아는 사람은 그 어떤 어려움도 견뎌낸다.',
+  '춤추는 별을 낳으려면, 마음속에 혼돈을 지녀야 한다.',
+  '너 자신이 되어라.',
+  '괴물과 싸우는 자는 스스로 괴물이 되지 않도록 조심하라.',
+  '심연을 오래 들여다보면, 심연도 너를 들여다본다.',
+  '인간은 극복되어야 할 무엇이다.',
+  '하루의 3분의 2를 자신을 위해 쓰지 못하는 자는 노예다.',
+  '진정으로 위대한 생각은 모두 걷는 중에 떠오른다.',
+  '이것이 나의 길이다. 너의 길은 어디 있는가?',
+  '허물을 벗지 못하는 뱀은 죽는다.',
+  '성숙함이란, 어릴 적 놀이에 쏟던 진지함을 되찾는 것이다.',
+  '인간은 건너가는 다리이지, 목적이 아니다.',
+  '살아 있는 모든 것은 스스로를 끊임없이 극복한다.',
+];
 
 function starStr(v: number): string {
   return '★'.repeat(v);
@@ -99,6 +116,29 @@ export default function Home() {
   const [panelQuad, setPanelQuad] = useState<QuadKey | null>(null);
   const [planTask, setPlanTask] = useState<Task | null>(null);
   const [error, setError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiHint, setAiHint] = useState('');
+  const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
+  const [quoteVisible, setQuoteVisible] = useState(true);
+  const quoteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const advanceQuote = useCallback(() => {
+    setQuoteVisible(false);
+    setTimeout(() => {
+      setQuoteIdx(i => (i + 1) % QUOTES.length);
+      setQuoteVisible(true);
+    }, 300);
+  }, []);
+
+  const resetQuoteTimer = useCallback(() => {
+    if (quoteTimerRef.current) clearInterval(quoteTimerRef.current);
+    quoteTimerRef.current = setInterval(advanceQuote, 10000);
+  }, [advanceQuote]);
+
+  useEffect(() => {
+    resetQuoteTimer();
+    return () => { if (quoteTimerRef.current) clearInterval(quoteTimerRef.current); };
+  }, [resetQuoteTimer]);
 
   useEffect(() => {
     async function loadTasks() {
@@ -131,6 +171,36 @@ export default function Home() {
       }
     });
   });
+
+  async function handleAiClassify() {
+    const text = inputText.trim();
+    if (!text) {
+      setError('먼저 할 일 내용을 입력해 주세요.');
+      return;
+    }
+    setAiLoading(true);
+    setAiHint('');
+    setError('');
+    try {
+      const res = await fetch('/api/classify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, dueDate: inputDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'AI 분류에 실패했어요.');
+        return;
+      }
+      setUrgent(data.urgent);
+      setImportant(data.important);
+      setAiHint(`✨ AI 분류: ${data.reason}`);
+    } catch {
+      setError('네트워크 오류가 발생했어요. 다시 시도해주세요.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleSubmit() {
     const text = inputText.trim();
@@ -168,6 +238,7 @@ export default function Home() {
     setUrgent(false);
     setImportant(false);
     setError('');
+    setAiHint('');
     setFormOpen(false);
   }
 
@@ -217,6 +288,7 @@ export default function Home() {
       <div className="wrap">
         <div className="topbar">
           <div>
+            <div className="main-title">그대여 걱정하지 말아요.</div>
             <div className="title">
               <span className="now">NOW.</span>{' '}
               <span className="must">MUST.</span>{' '}
@@ -238,13 +310,25 @@ export default function Home() {
         <div className={`form-box${formOpen ? ' open' : ''}`}>
           <div className="field">
             <label>할 일</label>
-            <input
-              type="text"
-              placeholder="무엇을 해야 하나요?"
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
+            <div className="input-row">
+              <input
+                type="text"
+                placeholder="무엇을 해야 하나요?"
+                value={inputText}
+                onChange={e => { setInputText(e.target.value); setAiHint(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+              <button
+                type="button"
+                className={`ai-btn${aiLoading ? ' loading' : ''}`}
+                onClick={handleAiClassify}
+                disabled={aiLoading}
+                title="AI가 사분면을 자동 분류합니다"
+              >
+                {aiLoading ? '분류 중…' : '✨ AI 자동 분류'}
+              </button>
+            </div>
+            {aiHint && <div className="ai-hint">{aiHint}</div>}
           </div>
           <div className="row">
             <div className="field">
@@ -319,6 +403,17 @@ export default function Home() {
               </div>
             );
           })}
+        </div>
+
+        <div
+          className="quote-box"
+          onClick={() => { advanceQuote(); resetQuoteTimer(); }}
+          title="클릭하면 다음 명언"
+        >
+          <div className={`quote-fade${quoteVisible ? '' : ' fade-out'}`}>
+            <p className="quote-text">&#8220;{QUOTES[quoteIdx]}&#8221;</p>
+            <span className="quote-attr">— 프리드리히 니체</span>
+          </div>
         </div>
       </div>
 
