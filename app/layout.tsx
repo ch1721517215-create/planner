@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,9 +12,19 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: '#1a2a52',
+}
+
 export const metadata: Metadata = {
   title: "NOW. MUST. TILL DONE.",
   description: "Eisenhower Matrix 할 일 관리",
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'NMTD',
+  },
 };
 
 export default function RootLayout({
