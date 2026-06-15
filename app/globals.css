@@ -158,6 +158,87 @@ body {
 .tf-meta .date.soon { color: #c47d10; font-weight: 600; }
 .tf-actions { display: flex; gap: 6px; }
 .tf-btn { border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 13px; }
+.tf-btn.steps-toggle { background: #ddeeff; color: #1e5a8a; }
+.tf-btn.steps-toggle.active { background: #1e5a8a; color: #fff; }
+
+.steps-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #d8ccb8;
+}
+.steps-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.steps-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--card-sub);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.ai-steps-btn {
+  padding: 5px 10px;
+  border: 1.5px solid #7060d0;
+  border-radius: 6px;
+  background: rgba(112,96,208,0.10);
+  color: #5040a8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ai-steps-btn:hover:not(:disabled) { background: rgba(112,96,208,0.22); }
+.ai-steps-btn.loading { opacity: 0.6; cursor: not-allowed; }
+.steps-err { font-size: 12px; color: #dc2626; margin-bottom: 8px; }
+
+.step-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.step-check { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+.step-input {
+  flex: 1;
+  border: 1px solid #e0d5bd;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  background: #fdf8ee;
+  color: var(--card-text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.step-input:focus { border-color: #a89cf0; }
+.step-input.done { text-decoration: line-through; color: #a89a85; }
+.step-del-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #c0a8a0;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 3px;
+  transition: color 0.12s;
+}
+.step-del-btn:hover { color: #c0392b; }
+.step-add-btn {
+  margin-top: 4px;
+  width: 100%;
+  background: none;
+  border: 1px dashed #c8b8a8;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #a08968;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.step-add-btn:hover { border-color: #9a8058; color: #7a6040; }
 .tf-btn.del { background: #f5d3cf; color: #a3271d; }
 .tf-btn.chk { background: #d5ecd9; color: #276749; }
 
@@ -213,6 +294,19 @@ body {
   padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .plan-save-btn:hover { background: #e84a2e; }
+
+/* ── AI 실행 단계 ─────────────────────────────────── */
+.plan-steps-section {
+  padding: 12px 22px 14px;
+  border-bottom: 1px solid #e0d5bd;
+  background: #f7f2e8;
+  flex-shrink: 0;
+}
+.plan-steps-list {
+  margin-top: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+}
 
 /* ── 툴바 ──────────────────────────────────────────── */
 .plan-toolbar {
