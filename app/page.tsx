@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import PlanModal, { WorkPlan } from './PlanModal';
-
-type Step = { id: string; text: string; done: boolean };
+import PlanModal from './PlanModal';
 
 type Task = {
   id: string;
@@ -13,8 +11,6 @@ type Task = {
   importance: number;
   done: boolean;
   plan_content?: unknown;
-  steps?: Step[];
-  work_plan?: WorkPlan | null;
   background_note?: string | null;
 };
 
@@ -107,8 +103,6 @@ function rowToTask(row: Record<string, unknown>): Task {
     importance: row.importance as number,
     done: row.done as boolean,
     plan_content: row.plan_content,
-    steps: Array.isArray(row.steps) ? (row.steps as Step[]) : [],
-    work_plan: (row.work_plan as WorkPlan) ?? null,
     background_note: (row.background_note as string) ?? null,
   };
 }
@@ -152,7 +146,7 @@ export default function Home() {
     async function loadTasks() {
       const { data } = await supabase
         .from('todos')
-        .select('id, text, quadrant, importance, due_date, done, plan_content, steps, work_plan, background_note')
+        .select('id, text, quadrant, importance, due_date, done, plan_content, background_note')
         .order('created_at', { ascending: true });
       if (!data) return;
       const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
@@ -278,17 +272,6 @@ export default function Home() {
       return updated;
     });
     setPlanTask(pt => pt && pt.id === id ? { ...pt, plan_content: content } : pt);
-  }
-
-  function handleWorkPlanSaved(id: string, plan: WorkPlan | null) {
-    setTasks(prev => {
-      const updated = { ...prev };
-      for (const q of QUADS) {
-        updated[q] = prev[q].map(t => t.id === id ? { ...t, work_plan: plan } : t);
-      }
-      return updated;
-    });
-    setPlanTask(pt => pt && pt.id === id ? { ...pt, work_plan: plan } : pt);
   }
 
   function handleBackgroundNoteSaved(id: string, note: string) {
@@ -453,7 +436,6 @@ export default function Home() {
           task={planTask}
           onClose={() => setPlanTask(null)}
           onSaved={handlePlanSaved}
-          onWorkPlanSaved={handleWorkPlanSaved}
           onBackgroundNoteSaved={handleBackgroundNoteSaved}
         />
       )}

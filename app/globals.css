@@ -197,6 +197,7 @@ body {
 .ai-steps-btn.loading { opacity: 0.6; cursor: not-allowed; }
 .steps-err { font-size: 12px; color: #dc2626; margin-bottom: 8px; }
 
+
 .step-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
 .step-check { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
 .step-input {
@@ -295,18 +296,85 @@ body {
 }
 .plan-save-btn:hover { background: #e84a2e; }
 
-/* ── AI 실행 단계 ─────────────────────────────────── */
-.plan-steps-section {
+/* ── AI 도움말 섹션 ────────────────────────────────── */
+.plan-tips-section {
   padding: 12px 22px 14px;
   border-bottom: 1px solid #e0d5bd;
-  background: #f7f2e8;
+  background: #f3ede0;
   flex-shrink: 0;
 }
-.plan-steps-list {
-  margin-top: 6px;
-  max-height: 190px;
-  overflow-y: auto;
+
+.tips-bg-wrap { margin-bottom: 8px; }
+.tips-bg-textarea {
+  width: 100%;
+  border: 1px solid #ddd0b8;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 13px;
+  background: #fdf8ee;
+  color: var(--card-text);
+  font-family: inherit;
+  outline: none;
+  resize: none;
+  line-height: 1.6;
+  transition: border-color 0.15s;
 }
+.tips-bg-textarea:focus { border-color: #a89cf0; background: #fff; }
+.tips-bg-textarea::placeholder { color: #b8a898; }
+
+.tips-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-tips-btn {
+  padding: 6px 13px;
+  border: 1.5px solid #c08030;
+  border-radius: 6px;
+  background: rgba(192,128,48,0.10);
+  color: #8a5a10;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ai-tips-btn:hover:not(:disabled) { background: rgba(192,128,48,0.20); }
+.ai-tips-btn.loading { opacity: 0.6; cursor: not-allowed; }
+.tips-err { font-size: 12px; color: #dc2626; }
+
+.tips-list {
+  margin-top: 10px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tips-item {
+  background: #fdf8ee;
+  border: 1px solid #e0d5bd;
+  border-left: 3px solid var(--gold);
+  border-radius: 6px;
+  padding: 7px 11px;
+  font-size: 13px;
+  color: var(--card-text);
+  line-height: 1.6;
+}
+.tips-add-btn {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1.5px solid #a08060;
+  border-radius: 6px;
+  background: rgba(160,128,96,0.10);
+  color: #6a4a20;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tips-add-btn:hover { background: rgba(160,128,96,0.22); }
 
 /* ── 툴바 ──────────────────────────────────────────── */
 .plan-toolbar {
@@ -327,124 +395,6 @@ body {
 .tb-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .tb-sep { display: inline-block; width: 1px; height: 20px; background: #d0c0a0; margin: 0 3px; align-self: center; }
 
-/* ── AI 업무계획 섹션 ─────────────────────────────── */
-.plan-workplan-section {
-  padding: 12px 22px 14px;
-  border-bottom: 1px solid #e0d5bd;
-  background: #f3ede0;
-  flex-shrink: 0;
-  max-height: 38vh;
-  overflow-y: auto;
-}
-
-.workplan-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.ai-plan-btn {
-  padding: 5px 11px;
-  border: 1.5px solid #3a9a6a;
-  border-radius: 6px;
-  background: rgba(58,154,106,0.10);
-  color: #1d6a45;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-.ai-plan-btn:hover:not(:disabled) { background: rgba(58,154,106,0.22); }
-.ai-plan-btn.loading { opacity: 0.6; cursor: not-allowed; }
-
-/* 배경 메모 */
-.workplan-bg-wrap {
-  margin-bottom: 10px;
-}
-.workplan-bg-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--card-sub);
-  margin-bottom: 5px;
-  line-height: 1.5;
-}
-.workplan-bg-opt {
-  font-weight: 400;
-  color: #b0a090;
-}
-.workplan-bg-hint {
-  font-weight: 400;
-  color: #b0a090;
-}
-.workplan-bg-textarea {
-  width: 100%;
-  border: 1px solid #ddd0b8;
-  border-radius: 7px;
-  padding: 7px 10px;
-  font-size: 13px;
-  background: #fdf8ee;
-  color: var(--card-text);
-  font-family: inherit;
-  outline: none;
-  resize: vertical;
-  line-height: 1.6;
-  transition: border-color 0.15s;
-}
-.workplan-bg-textarea:focus { border-color: #a89cf0; background: #fff; }
-
-.workplan-empty {
-  text-align: center;
-  padding: 14px 0 6px;
-  color: var(--card-sub);
-  font-size: 13px;
-  font-style: italic;
-}
-
-.workplan-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.workplan-card {
-  background: #fdf8ee;
-  border: 1px solid #e0d5bd;
-  border-radius: 10px;
-  padding: 9px 12px;
-}
-
-.workplan-card-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--card-sub);
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-
-.workplan-textarea {
-  width: 100%;
-  border: 1px solid #e0d5bd;
-  border-radius: 6px;
-  padding: 6px 9px;
-  font-size: 13px;
-  background: #fdf8ee;
-  color: var(--card-text);
-  font-family: inherit;
-  outline: none;
-  resize: vertical;
-  min-height: 44px;
-  line-height: 1.65;
-  transition: border-color 0.15s;
-}
-.workplan-textarea:focus { border-color: #a89cf0; background: #fff; }
-
-.workplan-steps-list { display: flex; flex-direction: column; }
 
 /* ── 에디터 영역 ───────────────────────────────────── */
 .plan-editor-wrap { flex: 1; overflow-y: auto; background: #fdf8ee; }
