@@ -15,6 +15,7 @@ type Task = {
   plan_content?: unknown;
   steps?: Step[];
   work_plan?: WorkPlan | null;
+  background_note?: string | null;
 };
 
 type Tasks = {
@@ -108,6 +109,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     plan_content: row.plan_content,
     steps: Array.isArray(row.steps) ? (row.steps as Step[]) : [],
     work_plan: (row.work_plan as WorkPlan) ?? null,
+    background_note: (row.background_note as string) ?? null,
   };
 }
 
@@ -150,7 +152,7 @@ export default function Home() {
     async function loadTasks() {
       const { data } = await supabase
         .from('todos')
-        .select('id, text, quadrant, importance, due_date, done, plan_content, steps, work_plan')
+        .select('id, text, quadrant, importance, due_date, done, plan_content, steps, work_plan, background_note')
         .order('created_at', { ascending: true });
       if (!data) return;
       const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
@@ -278,17 +280,6 @@ export default function Home() {
     setPlanTask(pt => pt && pt.id === id ? { ...pt, plan_content: content } : pt);
   }
 
-  function handleStepsSaved(id: string, steps: Step[]) {
-    setTasks(prev => {
-      const updated = { ...prev };
-      for (const q of QUADS) {
-        updated[q] = prev[q].map(t => t.id === id ? { ...t, steps } : t);
-      }
-      return updated;
-    });
-    setPlanTask(pt => pt && pt.id === id ? { ...pt, steps } : pt);
-  }
-
   function handleWorkPlanSaved(id: string, plan: WorkPlan | null) {
     setTasks(prev => {
       const updated = { ...prev };
@@ -298,6 +289,17 @@ export default function Home() {
       return updated;
     });
     setPlanTask(pt => pt && pt.id === id ? { ...pt, work_plan: plan } : pt);
+  }
+
+  function handleBackgroundNoteSaved(id: string, note: string) {
+    setTasks(prev => {
+      const updated = { ...prev };
+      for (const q of QUADS) {
+        updated[q] = prev[q].map(t => t.id === id ? { ...t, background_note: note } : t);
+      }
+      return updated;
+    });
+    setPlanTask(pt => pt && pt.id === id ? { ...pt, background_note: note } : pt);
   }
 
   const panelTasks = panelQuad ? tasks[panelQuad] : [];
@@ -451,8 +453,8 @@ export default function Home() {
           task={planTask}
           onClose={() => setPlanTask(null)}
           onSaved={handlePlanSaved}
-          onStepsSaved={handleStepsSaved}
           onWorkPlanSaved={handleWorkPlanSaved}
+          onBackgroundNoteSaved={handleBackgroundNoteSaved}
         />
       )}
 

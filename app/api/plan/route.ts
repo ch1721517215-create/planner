@@ -3,24 +3,34 @@ import { NextRequest } from 'next/server';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.3-70b-versatile';
 
-function buildPrompt(text: string): string {
-  return `당신은 실행 코치입니다. 사용자의 할 일에 맞춰 구체적인 업무계획서를 한국어로 작성해주세요.
+function buildPrompt(text: string, backgroundNote: string): string {
+  const bgSection = backgroundNote.trim()
+    ? `배경/상황: "${backgroundNote.trim()}"\n`
+    : '';
+
+  const bgExample = backgroundNote.trim()
+    ? `\n배경: "당근마켓 무재고 1인 운영, 자본 적음, 초보 단계"`
+    : '';
+
+  return `당신은 독종 실행 코치입니다. 교과서적 일반론은 없습니다. 이 사람의 현실에 딱 맞는 업무계획만 씁니다.
 
 할 일: "${text}"
+${bgSection}
+⛔ 절대 금지:
+- "목표를 설정한다", "타겟 고객을 분석한다", "전략을 수립한다" 같은 추상적 표현
+- 인터넷에서 찾을 수 있는 교과서적 표준 답변
+- 배경 상황을 무시한 대기업·전문가 기준 계획
+- 뻔한 일반론 ("열심히 한다", "꾸준히 실행한다")
 
-예시 (할 일: "기타 연습 1시간 하기"):
-{"goal":"한 곡을 악보 없이 처음부터 끝까지 완주하기","steps":["기타를 현관에 꺼내 두기","연습할 곡 1곡 선택하기","메트로놈 BPM 60에 맞춰 25분 집중 연습하기","5분 손 스트레칭 후 25분 추가 연습하기"],"resources":"기타, 악보, 메트로놈 앱(무료), 조용한 방","timeEstimate":"총 1시간 (25분 연습 → 5분 휴식 → 25분 연습 → 5분 정리)","doneWhen":"선택한 곡의 1절을 끊김 없이 처음부터 끝까지 연주 성공","obstacles":"손가락 통증 → 10분마다 스트레칭; 집중이 안 될 때 → 폰을 다른 방에 두기"}
+✅ 반드시 지킬 것:
+- 배경 메모가 있으면 그 맥락에 100% 맞춰서 작성 (예: "1인 무재고 셀러" → 오늘 혼자 할 수 있는 것만)
+- 각 단계는 오늘 또는 이번 주에 실제로 할 수 있는 것 (무엇을, 어떻게, 어디서 구체적으로)
+- 이 과제 특유의 걸림돌 — 이 상황에서만 나올 법한 것, 구체적 대처법
 
-규칙:
-- goal: 이 과제로 최종 이루려는 것 (1~2문장, 구체적 성과)
-- steps: 실행 순서대로 3~6개 행동 (각 단계는 동사로 시작, 구체적, 40자 이내)
-- resources: 준비물·자원 (쉼표 구분, 간결하게)
-- timeEstimate: 단계별 또는 전체 소요 시간
-- doneWhen: "이렇게 되면 끝"이라는 측정 가능한 기준 (1~2문장)
-- obstacles: 예상 걸림돌과 구체적 대처법 (세미콜론 구분)
-- 모든 항목은 오늘 당장 실행 가능한 수준으로, 막연한 일반론 금지
+예시 (할 일: "스마트스토어 상품 첫 등록하기"${bgExample}):
+{"goal":"오늘 중 상품 1개를 스마트스토어에 '판매중' 상태로 올리기","steps":["셀러센터 로그인 후 '상품 등록' 클릭해 빈 폼 열기","당근마켓에서 팔릴 것 같은 상품 1개 검색해 제목·가격·카테고리 메모하기","메모한 내용 그대로 폼에 입력하고 무재고 배송(위탁) 옵션 선택 후 저장하기"],"resources":"스마트스토어 셀러센터 계정, 스마트폰 또는 PC, 30분","timeEstimate":"첫 등록 30~50분, 두 번째부터 10~15분","doneWhen":"상품 상세 페이지 URL이 생기고 '구매하기' 버튼이 뜸","obstacles":"상품 이미지 없음 → 공급사 이미지 URL 그대로 사용; 가격 감이 없음 → 스마트스토어 동일 상품 최저가 -500원으로 시작"}
 
-반드시 아래 JSON 형식 하나만 응답하세요. 다른 텍스트는 절대 쓰지 마세요.
+반드시 아래 JSON 형식 하나만 응답하세요. 한국어로. 다른 텍스트 없이.
 {"goal":"...","steps":["...","...","..."],"resources":"...","timeEstimate":"...","doneWhen":"...","obstacles":"..."}`;
 }
 
@@ -32,6 +42,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const text: string = (body.text ?? '').trim();
+  const backgroundNote: string = (body.backgroundNote ?? '').trim();
   if (!text) {
     return Response.json({ error: '할 일 내용이 없습니다.' }, { status: 400 });
   }
@@ -46,9 +57,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: MODEL,
-        messages: [{ role: 'user', content: buildPrompt(text) }],
-        temperature: 0.4,
-        max_tokens: 600,
+        messages: [{ role: 'user', content: buildPrompt(text, backgroundNote) }],
+        temperature: 0.5,
+        max_tokens: 700,
       }),
     });
   } catch {

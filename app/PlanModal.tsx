@@ -12,8 +12,6 @@ import { Image } from '@tiptap/extension-image';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-type Step = { id: string; text: string; done: boolean };
-
 export type WorkPlanStep = { id: string; text: string; done: boolean };
 export type WorkPlan = {
   goal: string;
@@ -28,16 +26,16 @@ type PlanTask = {
   id: string;
   text: string;
   plan_content?: unknown;
-  steps?: Step[];
   work_plan?: WorkPlan | null;
+  background_note?: string | null;
 };
 
 type Props = {
   task: PlanTask;
   onClose: () => void;
   onSaved: (id: string, content: unknown) => void;
-  onStepsSaved: (id: string, steps: Step[]) => void;
   onWorkPlanSaved: (id: string, plan: WorkPlan | null) => void;
+  onBackgroundNoteSaved: (id: string, note: string) => void;
 };
 
 const PLAN_SECTIONS: { key: keyof Omit<WorkPlan, 'steps'>; emoji: string; label: string }[] = [
@@ -48,27 +46,26 @@ const PLAN_SECTIONS: { key: keyof Omit<WorkPlan, 'steps'>; emoji: string; label:
   { key: 'obstacles', emoji: '⚠️', label: '걸림돌 & 대비' },
 ];
 
-export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWorkPlanSaved }: Props) {
+export default function PlanModal({ task, onClose, onSaved, onWorkPlanSaved, onBackgroundNoteSaved }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
-  const [localSteps, setLocalSteps] = useState<Step[]>(task.steps ?? []);
-  const [stepsLoading, setStepsLoading] = useState(false);
-  const [stepsError, setStepsError] = useState('');
   const [workPlan, setWorkPlan] = useState<WorkPlan | null>(task.work_plan ?? null);
   const [workPlanLoading, setWorkPlanLoading] = useState(false);
   const [workPlanError, setWorkPlanError] = useState('');
-  const stepsRef = useRef<Step[]>(task.steps ?? []);
+  const [backgroundNote, setBackgroundNote] = useState(task.background_note ?? '');
   const workPlanRef = useRef<WorkPlan | null>(task.work_plan ?? null);
+  const backgroundNoteRef = useRef(task.background_note ?? '');
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLocalSteps(task.steps ?? []);
-    stepsRef.current = task.steps ?? [];
     const wp = task.work_plan ?? null;
     setWorkPlan(wp);
     workPlanRef.current = wp;
+    const note = task.background_note ?? '';
+    setBackgroundNote(note);
+    backgroundNoteRef.current = note;
   }, [task.id]);
 
   const persist = useCallback(async (content: unknown) => {
@@ -79,14 +76,14 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWork
     statusTimeout.current = setTimeout(() => setSaveStatus('idle'), 2000);
   }, [task.id, onSaved]);
 
-  async function persistSteps(steps: Step[]) {
-    await supabase.from('todos').update({ steps }).eq('id', task.id);
-    onStepsSaved(task.id, steps);
-  }
-
   async function persistWorkPlan(plan: WorkPlan | null) {
     await supabase.from('todos').update({ work_plan: plan }).eq('id', task.id);
     onWorkPlanSaved(task.id, plan);
+  }
+
+  async function persistBackgroundNote(note: string) {
+    await supabase.from('todos').update({ background_note: note }).eq('id', task.id);
+    onBackgroundNoteSaved(task.id, note);
   }
 
   const editor = useEditor({
@@ -146,63 +143,6 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWork
     setUploadStatus('idle');
   }
 
-  async function handleGenerateSteps() {
-    setStepsLoading(true);
-    setStepsError('');
-    try {
-      const res = await fetch('/api/steps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: task.text }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setStepsError(data.error ?? 'AI 오류가 발생했어요.'); return; }
-      const newSteps: Step[] = (data.steps as string[]).map(s => ({
-        id: crypto.randomUUID(),
-        text: s,
-        done: false,
-      }));
-      stepsRef.current = newSteps;
-      setLocalSteps(newSteps);
-      await persistSteps(newSteps);
-    } catch {
-      setStepsError('네트워크 오류가 발생했어요.');
-    } finally {
-      setStepsLoading(false);
-    }
-  }
-
-  async function handleToggleStep(stepId: string) {
-    const newSteps = stepsRef.current.map(s => s.id === stepId ? { ...s, done: !s.done } : s);
-    stepsRef.current = newSteps;
-    setLocalSteps(newSteps);
-    await persistSteps(newSteps);
-  }
-
-  function handleStepTextChange(stepId: string, text: string) {
-    const newSteps = stepsRef.current.map(s => s.id === stepId ? { ...s, text } : s);
-    stepsRef.current = newSteps;
-    setLocalSteps(newSteps);
-  }
-
-  async function handleStepBlur() {
-    await persistSteps(stepsRef.current);
-  }
-
-  async function handleDeleteStep(stepId: string) {
-    const newSteps = stepsRef.current.filter(s => s.id !== stepId);
-    stepsRef.current = newSteps;
-    setLocalSteps(newSteps);
-    await persistSteps(newSteps);
-  }
-
-  async function handleAddStep() {
-    const newSteps = [...stepsRef.current, { id: crypto.randomUUID(), text: '', done: false }];
-    stepsRef.current = newSteps;
-    setLocalSteps(newSteps);
-    await persistSteps(newSteps);
-  }
-
   async function handleGenerateWorkPlan() {
     setWorkPlanLoading(true);
     setWorkPlanError('');
@@ -210,7 +150,7 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWork
       const res = await fetch('/api/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: task.text }),
+        body: JSON.stringify({ text: task.text, backgroundNote: backgroundNoteRef.current }),
       });
       const data = await res.json();
       if (!res.ok) { setWorkPlanError(data.error ?? 'AI 오류가 발생했어요.'); return; }
@@ -320,43 +260,6 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWork
           </div>
         </div>
 
-        {/* AI 실행 단계 */}
-        <div className="plan-steps-section">
-          <div className="steps-top">
-            <span className="steps-label">실행 단계</span>
-            <button
-              className={`ai-steps-btn${stepsLoading ? ' loading' : ''}`}
-              onClick={handleGenerateSteps}
-              disabled={stepsLoading}
-            >
-              {stepsLoading ? '생성 중…' : '✨ AI로 3단계 나누기'}
-            </button>
-          </div>
-          {stepsError && <div className="steps-err">{stepsError}</div>}
-          <div className="plan-steps-list">
-            {localSteps.map(step => (
-              <div key={step.id} className="step-row">
-                <input
-                  type="checkbox"
-                  className="step-check"
-                  checked={step.done}
-                  onChange={() => handleToggleStep(step.id)}
-                />
-                <input
-                  type="text"
-                  className={`step-input${step.done ? ' done' : ''}`}
-                  value={step.text}
-                  placeholder="단계 내용"
-                  onChange={e => handleStepTextChange(step.id, e.target.value)}
-                  onBlur={handleStepBlur}
-                />
-                <button className="step-del-btn" onClick={() => handleDeleteStep(step.id)}>×</button>
-              </div>
-            ))}
-            <button className="step-add-btn" onClick={handleAddStep}>+ 단계 추가</button>
-          </div>
-        </div>
-
         {/* AI 업무계획 */}
         <div className="plan-workplan-section">
           <div className="workplan-top">
@@ -369,6 +272,26 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWork
               {workPlanLoading ? '업무계획 만드는 중...' : '📋 AI 업무계획 만들기'}
             </button>
           </div>
+
+          {/* 배경 메모 */}
+          <div className="workplan-bg-wrap">
+            <label className="workplan-bg-label">
+              이 과제의 배경 <span className="workplan-bg-opt">(선택)</span>
+              <span className="workplan-bg-hint"> — 상황을 적으면 AI가 더 맞춤형으로 계획을 짜줘요</span>
+            </label>
+            <textarea
+              className="workplan-bg-textarea"
+              placeholder="예: 당근마켓 무재고로 1인 운영, 자본 적음, 초보 단계"
+              value={backgroundNote}
+              onChange={e => {
+                setBackgroundNote(e.target.value);
+                backgroundNoteRef.current = e.target.value;
+              }}
+              onBlur={() => persistBackgroundNote(backgroundNoteRef.current)}
+              rows={2}
+            />
+          </div>
+
           {workPlanError && <div className="steps-err">{workPlanError}</div>}
 
           {workPlan === null ? (
