@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import PlanModal from './PlanModal';
+import AuthScreen from './AuthScreen';
 
 type Task = {
   id: string;
@@ -108,6 +110,8 @@ function rowToTask(row: Record<string, unknown>): Task {
 }
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [tasks, setTasks] = useState<Tasks>({ q1: [], q2: [], q3: [], q4: [] });
   const [formOpen, setFormOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -123,6 +127,45 @@ export default function Home() {
   const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [quoteVisible, setQuoteVisible] = useState(true);
   const quoteTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 인증 상태 구독
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 사용자 변경 시 할 일 로드 (로그아웃 시 초기화)
+  useEffect(() => {
+    if (!user) {
+      setTasks({ q1: [], q2: [], q3: [], q4: [] });
+      setPanelQuad(null);
+      setPlanTask(null);
+      setFormOpen(false);
+      return;
+    }
+    async function loadTasks() {
+      const { data } = await supabase
+        .from('todos')
+        .select('id, text, quadrant, importance, due_date, done, plan_content, background_note')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: true });
+      if (!data) return;
+      const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
+      for (const row of data) {
+        const q = row.quadrant as QuadKey;
+        if (organized[q]) organized[q].push(rowToTask(row));
+      }
+      setTasks(organized);
+    }
+    loadTasks();
+  }, [user?.id]);
 
   const advanceQuote = useCallback(() => {
     setQuoteVisible(false);
@@ -142,22 +185,9 @@ export default function Home() {
     return () => { if (quoteTimerRef.current) clearInterval(quoteTimerRef.current); };
   }, [resetQuoteTimer]);
 
-  useEffect(() => {
-    async function loadTasks() {
-      const { data } = await supabase
-        .from('todos')
-        .select('id, text, quadrant, importance, due_date, done, plan_content, background_note')
-        .order('created_at', { ascending: true });
-      if (!data) return;
-      const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
-      for (const row of data) {
-        const q = row.quadrant as QuadKey;
-        if (organized[q]) organized[q].push(rowToTask(row));
-      }
-      setTasks(organized);
-    }
-    loadTasks();
-  }, []);
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
 
   const quad = currentQuad(urgent, important);
   const quadHint = `→ ${QUAD_NAMES[quad]}`;
@@ -205,6 +235,7 @@ export default function Home() {
   }
 
   async function handleSubmit() {
+    if (!user) return;
     const text = inputText.trim();
     if (!text) {
       setError('할 일 내용을 입력해 주세요.');
@@ -223,6 +254,7 @@ export default function Home() {
         importance: stars || 1,
         due_date: inputDate || null,
         done: false,
+        user_id: user.id,
       })
       .select('id, text, quadrant, importance, due_date, done')
       .single();
@@ -287,6 +319,9 @@ export default function Home() {
 
   const panelTasks = panelQuad ? tasks[panelQuad] : [];
 
+  if (authLoading) return null;
+  if (!user) return <AuthScreen />;
+
   return (
     <>
       <div className="bg-shapes">
@@ -309,9 +344,15 @@ export default function Home() {
             </div>
             <div className="subtitle">Eisenhower Matrix</div>
           </div>
-          <button className="add-btn" onClick={() => setFormOpen(f => !f)}>
-            + 할 일 추가
-          </button>
+          <div className="topbar-right">
+            <button className="add-btn" onClick={() => setFormOpen(f => !f)}>
+              + 할 일 추가
+            </button>
+            <div className="user-bar">
+              <span className="user-email">{user.email}</span>
+              <button className="logout-btn" onClick={handleLogout}>로그아웃</button>
+            </div>
+          </div>
         </div>
 
         <div className="stats">
@@ -463,7 +504,7 @@ export default function Home() {
                       <span
                         className="tf-title tf-title-link"
                         onClick={() => setPlanTask(t)}
-                        title="세부 계획서 열기"
+                        title="메모 열기"
                       >
                         {t.text}
                         <span className="plan-badge">{t.plan_content ? '📋' : '+'}</span>
