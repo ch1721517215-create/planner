@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import PlanModal from './PlanModal';
+import PlanModal, { WorkPlan } from './PlanModal';
 
 type Step = { id: string; text: string; done: boolean };
 
@@ -14,6 +14,7 @@ type Task = {
   done: boolean;
   plan_content?: unknown;
   steps?: Step[];
+  work_plan?: WorkPlan | null;
 };
 
 type Tasks = {
@@ -106,6 +107,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     done: row.done as boolean,
     plan_content: row.plan_content,
     steps: Array.isArray(row.steps) ? (row.steps as Step[]) : [],
+    work_plan: (row.work_plan as WorkPlan) ?? null,
   };
 }
 
@@ -148,7 +150,7 @@ export default function Home() {
     async function loadTasks() {
       const { data } = await supabase
         .from('todos')
-        .select('id, text, quadrant, importance, due_date, done, plan_content, steps')
+        .select('id, text, quadrant, importance, due_date, done, plan_content, steps, work_plan')
         .order('created_at', { ascending: true });
       if (!data) return;
       const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
@@ -285,6 +287,17 @@ export default function Home() {
       return updated;
     });
     setPlanTask(pt => pt && pt.id === id ? { ...pt, steps } : pt);
+  }
+
+  function handleWorkPlanSaved(id: string, plan: WorkPlan | null) {
+    setTasks(prev => {
+      const updated = { ...prev };
+      for (const q of QUADS) {
+        updated[q] = prev[q].map(t => t.id === id ? { ...t, work_plan: plan } : t);
+      }
+      return updated;
+    });
+    setPlanTask(pt => pt && pt.id === id ? { ...pt, work_plan: plan } : pt);
   }
 
   const panelTasks = panelQuad ? tasks[panelQuad] : [];
@@ -439,6 +452,7 @@ export default function Home() {
           onClose={() => setPlanTask(null)}
           onSaved={handlePlanSaved}
           onStepsSaved={handleStepsSaved}
+          onWorkPlanSaved={handleWorkPlanSaved}
         />
       )}
 

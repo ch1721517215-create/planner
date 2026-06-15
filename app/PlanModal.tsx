@@ -14,11 +14,22 @@ import { supabase } from '@/lib/supabaseClient';
 
 type Step = { id: string; text: string; done: boolean };
 
+export type WorkPlanStep = { id: string; text: string; done: boolean };
+export type WorkPlan = {
+  goal: string;
+  steps: WorkPlanStep[];
+  resources: string;
+  timeEstimate: string;
+  doneWhen: string;
+  obstacles: string;
+};
+
 type PlanTask = {
   id: string;
   text: string;
   plan_content?: unknown;
   steps?: Step[];
+  work_plan?: WorkPlan | null;
 };
 
 type Props = {
@@ -26,15 +37,28 @@ type Props = {
   onClose: () => void;
   onSaved: (id: string, content: unknown) => void;
   onStepsSaved: (id: string, steps: Step[]) => void;
+  onWorkPlanSaved: (id: string, plan: WorkPlan | null) => void;
 };
 
-export default function PlanModal({ task, onClose, onSaved, onStepsSaved }: Props) {
+const PLAN_SECTIONS: { key: keyof Omit<WorkPlan, 'steps'>; emoji: string; label: string }[] = [
+  { key: 'goal', emoji: '🎯', label: '목표' },
+  { key: 'resources', emoji: '🧰', label: '필요한 것' },
+  { key: 'timeEstimate', emoji: '⏱', label: '예상 소요' },
+  { key: 'doneWhen', emoji: '✅', label: '완료 기준' },
+  { key: 'obstacles', emoji: '⚠️', label: '걸림돌 & 대비' },
+];
+
+export default function PlanModal({ task, onClose, onSaved, onStepsSaved, onWorkPlanSaved }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [localSteps, setLocalSteps] = useState<Step[]>(task.steps ?? []);
   const [stepsLoading, setStepsLoading] = useState(false);
   const [stepsError, setStepsError] = useState('');
+  const [workPlan, setWorkPlan] = useState<WorkPlan | null>(task.work_plan ?? null);
+  const [workPlanLoading, setWorkPlanLoading] = useState(false);
+  const [workPlanError, setWorkPlanError] = useState('');
   const stepsRef = useRef<Step[]>(task.steps ?? []);
+  const workPlanRef = useRef<WorkPlan | null>(task.work_plan ?? null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +66,9 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved }: Prop
   useEffect(() => {
     setLocalSteps(task.steps ?? []);
     stepsRef.current = task.steps ?? [];
+    const wp = task.work_plan ?? null;
+    setWorkPlan(wp);
+    workPlanRef.current = wp;
   }, [task.id]);
 
   const persist = useCallback(async (content: unknown) => {
@@ -55,6 +82,11 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved }: Prop
   async function persistSteps(steps: Step[]) {
     await supabase.from('todos').update({ steps }).eq('id', task.id);
     onStepsSaved(task.id, steps);
+  }
+
+  async function persistWorkPlan(plan: WorkPlan | null) {
+    await supabase.from('todos').update({ work_plan: plan }).eq('id', task.id);
+    onWorkPlanSaved(task.id, plan);
   }
 
   const editor = useEditor({
@@ -171,6 +203,93 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved }: Prop
     await persistSteps(newSteps);
   }
 
+  async function handleGenerateWorkPlan() {
+    setWorkPlanLoading(true);
+    setWorkPlanError('');
+    try {
+      const res = await fetch('/api/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: task.text }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setWorkPlanError(data.error ?? 'AI 오류가 발생했어요.'); return; }
+      const newPlan: WorkPlan = {
+        goal: data.goal,
+        steps: (data.steps as string[]).map(s => ({ id: crypto.randomUUID(), text: s, done: false })),
+        resources: data.resources,
+        timeEstimate: data.timeEstimate,
+        doneWhen: data.doneWhen,
+        obstacles: data.obstacles,
+      };
+      workPlanRef.current = newPlan;
+      setWorkPlan(newPlan);
+      await persistWorkPlan(newPlan);
+    } catch {
+      setWorkPlanError('네트워크 오류가 발생했어요.');
+    } finally {
+      setWorkPlanLoading(false);
+    }
+  }
+
+  function handleWorkPlanFieldChange(field: keyof Omit<WorkPlan, 'steps'>, value: string) {
+    if (!workPlanRef.current) return;
+    const updated = { ...workPlanRef.current, [field]: value };
+    workPlanRef.current = updated;
+    setWorkPlan(updated);
+  }
+
+  async function handleWorkPlanFieldBlur() {
+    if (workPlanRef.current) await persistWorkPlan(workPlanRef.current);
+  }
+
+  async function handleToggleWorkPlanStep(id: string) {
+    if (!workPlanRef.current) return;
+    const updated = {
+      ...workPlanRef.current,
+      steps: workPlanRef.current.steps.map(s => s.id === id ? { ...s, done: !s.done } : s),
+    };
+    workPlanRef.current = updated;
+    setWorkPlan(updated);
+    await persistWorkPlan(updated);
+  }
+
+  function handleWorkPlanStepTextChange(id: string, text: string) {
+    if (!workPlanRef.current) return;
+    const updated = {
+      ...workPlanRef.current,
+      steps: workPlanRef.current.steps.map(s => s.id === id ? { ...s, text } : s),
+    };
+    workPlanRef.current = updated;
+    setWorkPlan(updated);
+  }
+
+  async function handleWorkPlanStepBlur() {
+    if (workPlanRef.current) await persistWorkPlan(workPlanRef.current);
+  }
+
+  async function handleDeleteWorkPlanStep(id: string) {
+    if (!workPlanRef.current) return;
+    const updated = {
+      ...workPlanRef.current,
+      steps: workPlanRef.current.steps.filter(s => s.id !== id),
+    };
+    workPlanRef.current = updated;
+    setWorkPlan(updated);
+    await persistWorkPlan(updated);
+  }
+
+  async function handleAddWorkPlanStep() {
+    if (!workPlanRef.current) return;
+    const updated = {
+      ...workPlanRef.current,
+      steps: [...workPlanRef.current.steps, { id: crypto.randomUUID(), text: '', done: false }],
+    };
+    workPlanRef.current = updated;
+    setWorkPlan(updated);
+    await persistWorkPlan(updated);
+  }
+
   if (!editor) return null;
 
   const tb = (label: string, action: () => void, active?: boolean) => (
@@ -236,6 +355,70 @@ export default function PlanModal({ task, onClose, onSaved, onStepsSaved }: Prop
             ))}
             <button className="step-add-btn" onClick={handleAddStep}>+ 단계 추가</button>
           </div>
+        </div>
+
+        {/* AI 업무계획 */}
+        <div className="plan-workplan-section">
+          <div className="workplan-top">
+            <span className="steps-label">업무계획</span>
+            <button
+              className={`ai-plan-btn${workPlanLoading ? ' loading' : ''}`}
+              onClick={handleGenerateWorkPlan}
+              disabled={workPlanLoading}
+            >
+              {workPlanLoading ? '업무계획 만드는 중...' : '📋 AI 업무계획 만들기'}
+            </button>
+          </div>
+          {workPlanError && <div className="steps-err">{workPlanError}</div>}
+
+          {workPlan === null ? (
+            <div className="workplan-empty">
+              버튼을 눌러 AI가 6개 항목의 업무계획서를 만들어 드려요.
+            </div>
+          ) : (
+            <div className="workplan-cards">
+              {/* 세부 단계 카드 */}
+              <div className="workplan-card">
+                <div className="workplan-card-title">📋 세부 단계</div>
+                <div className="workplan-steps-list">
+                  {workPlan.steps.map(s => (
+                    <div key={s.id} className="step-row">
+                      <input
+                        type="checkbox"
+                        className="step-check"
+                        checked={s.done}
+                        onChange={() => handleToggleWorkPlanStep(s.id)}
+                      />
+                      <input
+                        type="text"
+                        className={`step-input${s.done ? ' done' : ''}`}
+                        value={s.text}
+                        placeholder="단계 내용"
+                        onChange={e => handleWorkPlanStepTextChange(s.id, e.target.value)}
+                        onBlur={handleWorkPlanStepBlur}
+                      />
+                      <button className="step-del-btn" onClick={() => handleDeleteWorkPlanStep(s.id)}>×</button>
+                    </div>
+                  ))}
+                  <button className="step-add-btn" onClick={handleAddWorkPlanStep}>+ 단계 추가</button>
+                </div>
+              </div>
+
+              {/* 나머지 5개 텍스트 카드 */}
+              {PLAN_SECTIONS.map(({ key, emoji, label }) => (
+                <div key={key} className="workplan-card">
+                  <div className="workplan-card-title">{emoji} {label}</div>
+                  <textarea
+                    className="workplan-textarea"
+                    value={workPlan[key]}
+                    placeholder={`${label} 내용`}
+                    onChange={e => handleWorkPlanFieldChange(key, e.target.value)}
+                    onBlur={handleWorkPlanFieldBlur}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* 에디터 툴바 */}

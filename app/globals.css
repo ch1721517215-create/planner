@@ -327,6 +327,89 @@ body {
 .tb-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .tb-sep { display: inline-block; width: 1px; height: 20px; background: #d0c0a0; margin: 0 3px; align-self: center; }
 
+/* ── AI 업무계획 섹션 ─────────────────────────────── */
+.plan-workplan-section {
+  padding: 12px 22px 14px;
+  border-bottom: 1px solid #e0d5bd;
+  background: #f3ede0;
+  flex-shrink: 0;
+  max-height: 38vh;
+  overflow-y: auto;
+}
+
+.workplan-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ai-plan-btn {
+  padding: 5px 11px;
+  border: 1.5px solid #3a9a6a;
+  border-radius: 6px;
+  background: rgba(58,154,106,0.10);
+  color: #1d6a45;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ai-plan-btn:hover:not(:disabled) { background: rgba(58,154,106,0.22); }
+.ai-plan-btn.loading { opacity: 0.6; cursor: not-allowed; }
+
+.workplan-empty {
+  text-align: center;
+  padding: 14px 0 6px;
+  color: var(--card-sub);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.workplan-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.workplan-card {
+  background: #fdf8ee;
+  border: 1px solid #e0d5bd;
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+.workplan-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--card-sub);
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.workplan-textarea {
+  width: 100%;
+  border: 1px solid #e0d5bd;
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 13px;
+  background: #fdf8ee;
+  color: var(--card-text);
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 44px;
+  line-height: 1.65;
+  transition: border-color 0.15s;
+}
+.workplan-textarea:focus { border-color: #a89cf0; background: #fff; }
+
+.workplan-steps-list { display: flex; flex-direction: column; }
+
 /* ── 에디터 영역 ───────────────────────────────────── */
 .plan-editor-wrap { flex: 1; overflow-y: auto; background: #fdf8ee; }
 
