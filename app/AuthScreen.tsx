@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'forgot';
 
 function translateError(msg: string): string {
   if (msg.includes('Invalid login credentials')) return '이메일 또는 비밀번호가 맞지 않아요.';
@@ -22,10 +22,12 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
 
   function switchMode(m: Mode) {
     setMode(m);
     setError('');
+    setResetSent(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,9 +38,18 @@ export default function AuthScreen() {
       if (mode === 'login') {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) setError(translateError(err.message));
-      } else {
+      } else if (mode === 'signup') {
         const { error: err } = await supabase.auth.signUp({ email, password });
         if (err) setError(translateError(err.message));
+      } else {
+        const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: 'https://planner-taupe-one.vercel.app/reset-password',
+        });
+        if (err) {
+          setError(translateError(err.message));
+        } else {
+          setResetSent(true);
+        }
       }
     } catch {
       setError('네트워크 오류가 발생했어요. 다시 시도해주세요.');
@@ -70,51 +81,97 @@ export default function AuthScreen() {
             <div className="subtitle">Eisenhower Matrix</div>
           </div>
 
-          <div className="auth-tabs">
-            <button
-              type="button"
-              className={`auth-tab${mode === 'login' ? ' active' : ''}`}
-              onClick={() => switchMode('login')}
-            >
-              로그인
-            </button>
-            <button
-              type="button"
-              className={`auth-tab${mode === 'signup' ? ' active' : ''}`}
-              onClick={() => switchMode('signup')}
-            >
-              회원가입
-            </button>
-          </div>
+          {mode !== 'forgot' ? (
+            <>
+              <div className="auth-tabs">
+                <button
+                  type="button"
+                  className={`auth-tab${mode === 'login' ? ' active' : ''}`}
+                  onClick={() => switchMode('login')}
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  className={`auth-tab${mode === 'signup' ? ' active' : ''}`}
+                  onClick={() => switchMode('signup')}
+                >
+                  회원가입
+                </button>
+              </div>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <div className="field">
-              <label>이메일</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="이메일 주소를 입력하세요"
-                required
-                autoComplete="email"
-              />
+              <form className="auth-form" onSubmit={handleSubmit}>
+                <div className="field">
+                  <label>이메일</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="이메일 주소를 입력하세요"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="field">
+                  <label>비밀번호</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={mode === 'signup' ? '6자 이상 입력하세요' : '비밀번호를 입력하세요'}
+                    required
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  />
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      className="forgot-link"
+                      onClick={() => switchMode('forgot')}
+                    >
+                      비밀번호를 잊으셨나요?
+                    </button>
+                  )}
+                </div>
+                {error && <div className="err">{error}</div>}
+                <button type="submit" className="submit-btn" disabled={loading}>
+                  {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="forgot-wrap">
+              <button type="button" className="back-link" onClick={() => switchMode('login')}>
+                ← 로그인으로 돌아가기
+              </button>
+
+              {resetSent ? (
+                <div className="reset-sent-msg">
+                  입력하신 이메일로 재설정 링크를 보냈어요.<br />메일함을 확인해주세요.
+                </div>
+              ) : (
+                <form className="auth-form" onSubmit={handleSubmit}>
+                  <p className="forgot-desc">
+                    가입하신 이메일을 입력하시면<br />비밀번호 재설정 링크를 보내드려요.
+                  </p>
+                  <div className="field">
+                    <label>이메일</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="이메일 주소를 입력하세요"
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                  {error && <div className="err">{error}</div>}
+                  <button type="submit" className="submit-btn" disabled={loading}>
+                    {loading ? '처리 중...' : '재설정 메일 보내기'}
+                  </button>
+                </form>
+              )}
             </div>
-            <div className="field">
-              <label>비밀번호</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder={mode === 'signup' ? '6자 이상 입력하세요' : '비밀번호를 입력하세요'}
-                required
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              />
-            </div>
-            {error && <div className="err">{error}</div>}
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
-            </button>
-          </form>
+          )}
         </div>
       </div>
     </>
