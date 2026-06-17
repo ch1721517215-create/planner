@@ -23,11 +23,13 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [signupSent, setSignupSent] = useState(false);
 
   function switchMode(m: Mode) {
     setMode(m);
     setError('');
     setResetSent(false);
+    setSignupSent(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,7 +42,11 @@ export default function AuthScreen() {
         if (err) setError(translateError(err.message));
       } else if (mode === 'signup') {
         const { error: err } = await supabase.auth.signUp({ email, password });
-        if (err) setError(translateError(err.message));
+        if (err) {
+          setError(translateError(err.message));
+        } else {
+          setSignupSent(true);
+        }
       } else {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: 'https://planner-taupe-one.vercel.app/reset-password',
@@ -100,43 +106,57 @@ export default function AuthScreen() {
                 </button>
               </div>
 
-              <form className="auth-form" onSubmit={handleSubmit}>
-                <div className="field">
-                  <label>이메일</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="이메일 주소를 입력하세요"
-                    required
-                    autoComplete="email"
-                  />
+              {signupSent ? (
+                <div className="email-sent-result">
+                  <div className="reset-sent-msg">
+                    <p>가입이 완료됐어요!<br />이메일로 인증 링크를 보냈어요.<br />메일함을 확인해 인증을 완료해주세요.</p>
+                    <div className="spam-notice">
+                      📩 메일이 안 보이면 스팸함(정크메일함)을 꼭 확인해주세요!
+                    </div>
+                  </div>
+                  <button type="button" className="back-link" style={{ marginTop: 14 }} onClick={() => switchMode('login')}>
+                    로그인 화면으로 →
+                  </button>
                 </div>
-                <div className="field">
-                  <label>비밀번호</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder={mode === 'signup' ? '6자 이상 입력하세요' : '비밀번호를 입력하세요'}
-                    required
-                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  />
-                  {mode === 'login' && (
-                    <button
-                      type="button"
-                      className="forgot-link"
-                      onClick={() => switchMode('forgot')}
-                    >
-                      비밀번호를 잊으셨나요?
-                    </button>
-                  )}
-                </div>
-                {error && <div className="err">{error}</div>}
-                <button type="submit" className="submit-btn" disabled={loading}>
-                  {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
-                </button>
-              </form>
+              ) : (
+                <form className="auth-form" onSubmit={handleSubmit}>
+                  <div className="field">
+                    <label>이메일</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="이메일 주소를 입력하세요"
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>비밀번호</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder={mode === 'signup' ? '6자 이상 입력하세요' : '비밀번호를 입력하세요'}
+                      required
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    />
+                    {mode === 'login' && (
+                      <button
+                        type="button"
+                        className="forgot-link"
+                        onClick={() => switchMode('forgot')}
+                      >
+                        비밀번호를 잊으셨나요?
+                      </button>
+                    )}
+                  </div>
+                  {error && <div className="err">{error}</div>}
+                  <button type="submit" className="submit-btn" disabled={loading}>
+                    {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
+                  </button>
+                </form>
+              )}
             </>
           ) : (
             <div className="forgot-wrap">
@@ -146,7 +166,10 @@ export default function AuthScreen() {
 
               {resetSent ? (
                 <div className="reset-sent-msg">
-                  입력하신 이메일로 재설정 링크를 보냈어요.<br />메일함을 확인해주세요.
+                  <p>입력하신 이메일로 재설정 링크를 보냈어요.<br />메일함을 확인해주세요.</p>
+                  <div className="spam-notice">
+                    📩 메일이 안 보이면 스팸함(정크메일함)을 꼭 확인해주세요!
+                  </div>
                 </div>
               ) : (
                 <form className="auth-form" onSubmit={handleSubmit}>

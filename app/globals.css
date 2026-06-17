@@ -282,6 +282,26 @@ body {
   line-height: 1.7;
   text-align: center;
 }
+.reset-sent-msg p { margin: 0 0 2px; }
+
+.spam-notice {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-left: 3px solid #f59e0b;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.email-sent-result {
+  display: flex;
+  flex-direction: column;
+}
 
 .reset-invalid-msg {
   background: #fff3e0;
