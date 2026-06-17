@@ -33,10 +33,10 @@ const QUAD_NAMES: Record<QuadKey, string> = {
 };
 
 const QUAD_INFO: Record<QuadKey, { title: string; sub: string }> = {
-  q1: { title: '급하고 중요한 일', sub: '지금 당장' },
-  q2: { title: '급하진 않지만 중요한 일', sub: '계획해서' },
-  q3: { title: '급하지만 중요치 않은 일', sub: '줄이거나 자동화' },
-  q4: { title: '급하지도 중요하지도 않은 일', sub: '아예 없애기' },
+  q1: { title: '급하고 중요한 일', sub: '당장 해야할 일' },
+  q2: { title: '급하진 않지만 중요한 일', sub: '나와 삶을 바꾸는 일' },
+  q3: { title: '급하지만 중요치 않은 일', sub: '자동화시켜야 되는 일' },
+  q4: { title: '급하지도 중요하지도 않은 일', sub: '없애야 할 일' },
 };
 
 const QUADS: QuadKey[] = ['q1', 'q2', 'q3', 'q4'];
