@@ -26,12 +26,27 @@ type Props = {
   onBackgroundNoteSaved: (id: string, note: string) => void;
 };
 
+type DecomposeResult = {
+  identity: string;
+  q1: string[];
+  q2: string[];
+  q3: string[];
+  q4: string[];
+};
+
+const QUAD_SECTIONS: { key: keyof Omit<DecomposeResult, 'identity'>; label: string; sub: string; cls: string }[] = [
+  { key: 'q1', label: '🔴 당장 해야할 일', sub: '급하고 중요', cls: 'dq-red' },
+  { key: 'q2', label: '🟣 삶을 바꾸는 일', sub: '급하진 않지만 중요', cls: 'dq-purple' },
+  { key: 'q3', label: '🟡 자동화시켜야 되는 일', sub: '급하지만 중요치 않음', cls: 'dq-yellow' },
+  { key: 'q4', label: '⬜ 없애야 할 일', sub: '급하지도 중요하지도 않음', cls: 'dq-gray' },
+];
+
 export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSaved }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [backgroundNote, setBackgroundNote] = useState(task.background_note ?? '');
-  const [tips, setTips] = useState<string[]>([]);
-  const [tipsLoading, setTipsLoading] = useState(false);
-  const [tipsError, setTipsError] = useState('');
+  const [decompose, setDecompose] = useState<DecomposeResult | null>(null);
+  const [decomposeLoading, setDecomposeLoading] = useState(false);
+  const [decomposeError, setDecomposeError] = useState('');
   const backgroundNoteRef = useRef(task.background_note ?? '');
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,8 +55,8 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
     const note = task.background_note ?? '';
     setBackgroundNote(note);
     backgroundNoteRef.current = note;
-    setTips([]);
-    setTipsError('');
+    setDecompose(null);
+    setDecomposeError('');
   }, [task.id]);
 
   const persist = useCallback(async (content: unknown) => {
@@ -90,38 +105,57 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
   }
 
   function handleAddToMemo() {
-    if (!editor || tips.length === 0) return;
+    if (!editor || !decompose) return;
     const end = editor.state.doc.content.size;
-    editor.chain().focus().insertContentAt(end, [
+
+    const nodes: object[] = [
       { type: 'paragraph' },
-      { type: 'paragraph', content: [{ type: 'text', marks: [{ type: 'bold' }], text: '💡 AI 팁' }] },
       {
-        type: 'bulletList',
-        content: tips.map(tip => ({
-          type: 'listItem',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: tip }] }],
-        })),
+        type: 'paragraph',
+        content: [{ type: 'text', marks: [{ type: 'bold' }], text: '🧩 AI 실행 분해 (아토믹 해빗)' }],
       },
-    ]).run();
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', marks: [{ type: 'italic' }], text: `💬 ${decompose.identity}` }],
+      },
+    ];
+
+    for (const section of QUAD_SECTIONS) {
+      const items = decompose[section.key];
+      if (items.length === 0) continue;
+      nodes.push({
+        type: 'paragraph',
+        content: [{ type: 'text', marks: [{ type: 'bold' }], text: `${section.label} (${section.sub})` }],
+      });
+      nodes.push({
+        type: 'bulletList',
+        content: items.map(item => ({
+          type: 'listItem',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: item }] }],
+        })),
+      });
+    }
+
+    editor.chain().focus().insertContentAt(end, nodes).run();
   }
 
-  async function handleGenerateTips() {
-    setTipsLoading(true);
-    setTipsError('');
-    setTips([]);
+  async function handleDecompose() {
+    setDecomposeLoading(true);
+    setDecomposeError('');
+    setDecompose(null);
     try {
-      const res = await fetch('/api/tips', {
+      const res = await fetch('/api/decompose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: task.text, backgroundNote: backgroundNoteRef.current }),
       });
       const data = await res.json();
-      if (!res.ok) { setTipsError(data.error ?? 'AI 오류가 발생했어요.'); return; }
-      setTips(data.tips as string[]);
+      if (!res.ok) { setDecomposeError(data.error ?? 'AI 오류가 발생했어요.'); return; }
+      setDecompose(data as DecomposeResult);
     } catch {
-      setTipsError('네트워크 오류가 발생했어요.');
+      setDecomposeError('네트워크 오류가 발생했어요.');
     } finally {
-      setTipsLoading(false);
+      setDecomposeLoading(false);
     }
   }
 
@@ -154,12 +188,12 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
           </div>
         </div>
 
-        {/* AI 도움말 + 배경 메모 */}
+        {/* AI 실행 분해 + 배경 메모 */}
         <div className="plan-tips-section">
           <div className="tips-bg-wrap">
             <textarea
               className="tips-bg-textarea"
-              placeholder="이 과제의 배경/상황 (선택) — 적으면 AI 팁이 더 맞춤형이 돼요"
+              placeholder="이 과제의 배경/상황 (선택) — 적으면 AI 분해가 더 맞춤형이 돼요"
               value={backgroundNote}
               rows={2}
               onChange={e => {
@@ -171,25 +205,54 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
           </div>
           <div className="tips-action-row">
             <button
-              className={`ai-tips-btn${tipsLoading ? ' loading' : ''}`}
-              onClick={handleGenerateTips}
-              disabled={tipsLoading}
+              className={`ai-tips-btn${decomposeLoading ? ' loading' : ''}`}
+              onClick={handleDecompose}
+              disabled={decomposeLoading}
             >
-              {tipsLoading ? 'AI가 팁을 찾는 중...' : '💡 AI 도움말'}
+              {decomposeLoading ? '분해하는 중...' : '🧩 AI로 실행 분해하기'}
             </button>
-            {tipsError && <span className="tips-err">{tipsError}</span>}
+            {decompose && !decomposeLoading && (
+              <button
+                className="ai-tips-btn ai-tips-retry"
+                onClick={handleDecompose}
+                disabled={decomposeLoading}
+                title="다시 생성하기"
+              >
+                ↺ 재생성
+              </button>
+            )}
+            {decomposeError && <span className="tips-err">{decomposeError}</span>}
           </div>
-          {tips.length > 0 && (
-            <>
-              <ul className="tips-list">
-                {tips.map((tip, i) => (
-                  <li key={i} className="tips-item">{tip}</li>
-                ))}
-              </ul>
+
+          {decompose && (
+            <div className="decompose-result">
+              <div className="decompose-identity">
+                <span className="decompose-identity-badge">정체성</span>
+                <span className="decompose-identity-text">{decompose.identity}</span>
+              </div>
+              <div className="decompose-quads">
+                {QUAD_SECTIONS.map(section => {
+                  const items = decompose[section.key];
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={section.key} className={`decompose-quad ${section.cls}`}>
+                      <div className="decompose-quad-header">
+                        <span className="decompose-quad-label">{section.label}</span>
+                        <span className="decompose-quad-sub">{section.sub}</span>
+                      </div>
+                      <ul className="decompose-items">
+                        {items.map((item, i) => (
+                          <li key={i} className="decompose-item">{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
               <button className="tips-add-btn" onClick={handleAddToMemo}>
                 📥 메모에 추가
               </button>
-            </>
+            </div>
           )}
         </div>
 
