@@ -41,21 +41,57 @@ const QUAD_INFO: Record<QuadKey, { title: string; sub: string }> = {
 
 const QUADS: QuadKey[] = ['q1', 'q2', 'q3', 'q4'];
 
-const QUOTES = [
-  '나를 죽이지 못하는 것은 나를 더 강하게 만든다.',
-  '왜 살아야 하는지 아는 사람은 그 어떤 어려움도 견뎌낸다.',
-  '춤추는 별을 낳으려면, 마음속에 혼돈을 지녀야 한다.',
-  '너 자신이 되어라.',
-  '괴물과 싸우는 자는 스스로 괴물이 되지 않도록 조심하라.',
-  '심연을 오래 들여다보면, 심연도 너를 들여다본다.',
-  '인간은 극복되어야 할 무엇이다.',
-  '하루의 3분의 2를 자신을 위해 쓰지 못하는 자는 노예다.',
-  '진정으로 위대한 생각은 모두 걷는 중에 떠오른다.',
-  '이것이 나의 길이다. 너의 길은 어디 있는가?',
-  '허물을 벗지 못하는 뱀은 죽는다.',
-  '성숙함이란, 어릴 적 놀이에 쏟던 진지함을 되찾는 것이다.',
-  '인간은 건너가는 다리이지, 목적이 아니다.',
-  '살아 있는 모든 것은 스스로를 끊임없이 극복한다.',
+const QUOTES: { text: string; author: string }[] = [
+  { text: '이것이 나의 길이다. 너의 길은 어디 있는가?', author: '프리드리히 니체' },
+  { text: '너를 죽이지 못하는 것은 너를 더 강하게 만든다.', author: '프리드리히 니체' },
+  { text: '춤추는 별을 낳으려면 내면에 혼돈을 품고 있어야 한다.', author: '프리드리히 니체' },
+  { text: '왜 살아야 하는지 아는 사람은 그 어떤 어려움도 견딜 수 있다.', author: '프리드리히 니체' },
+  { text: '괴물과 싸우는 자는 스스로 괴물이 되지 않도록 조심해야 한다.', author: '프리드리히 니체' },
+  { text: '삶이 가장 어려울 때, 가장 크게 성장한다.', author: '프리드리히 니체' },
+  { text: '자신을 사랑하는 법을 배우는 것이 가장 위대한 일이다.', author: '프리드리히 니체' },
+  { text: '행동하라. 그러면 길이 열린다.', author: '프리드리히 니체' },
+  { text: '오늘 할 수 있는 일에 전념하라. 그러면 내일은 한 걸음 나아가 있을 것이다.', author: '마르쿠스 아우렐리우스' },
+  { text: '우리의 삶은 우리의 생각이 만들어가는 것이다.', author: '마르쿠스 아우렐리우스' },
+  { text: '완벽을 기대하지 말고, 진전을 이루는 데 집중하라.', author: '마르쿠스 아우렐리우스' },
+  { text: '네가 가진 것에 만족하되, 더 나아지기를 멈추지 마라.', author: '마르쿠스 아우렐리우스' },
+  { text: '장애물은 행동을 가로막지만, 동시에 행동의 길이 된다.', author: '마르쿠스 아우렐리우스' },
+  { text: '할 수 있다고 믿든 없다고 믿든, 믿는 대로 된다.', author: '헨리 포드' },
+  { text: '시작이 반이다.', author: '아리스토텔레스' },
+  { text: '우리는 반복적으로 행하는 것의 결과다. 그러므로 탁월함은 행위가 아니라 습관이다.', author: '아리스토텔레스' },
+  { text: '천 리 길도 한 걸음부터 시작된다.', author: '노자' },
+  { text: '가장 큰 영광은 한 번도 넘어지지 않음이 아니라, 넘어질 때마다 일어서는 데 있다.', author: '넬슨 만델라' },
+  { text: '오늘 누군가 그늘에 앉아 쉴 수 있는 것은, 오래 전 누군가 나무를 심었기 때문이다.', author: '워런 버핏' },
+  { text: '미래를 예측하는 가장 좋은 방법은 그것을 만드는 것이다.', author: '피터 드러커' },
+  { text: '작은 일들을 매일 꾸준히 하는 것이 큰 변화를 만든다.', author: '제임스 클리어' },
+  { text: '당신은 목표 수준으로 올라가는 것이 아니라, 시스템 수준으로 떨어진다.', author: '제임스 클리어' },
+  { text: '1퍼센트씩 나아지는 것이 처음엔 눈에 띄지 않지만, 시간이 지나면 모든 것을 바꾼다.', author: '제임스 클리어' },
+  { text: '습관은 복리로 쌓인다.', author: '제임스 클리어' },
+  { text: '어떤 일을 시작하기에 완벽한 때란 없다. 지금이 그때다.', author: '작자 미상' },
+  { text: '행복은 습관이다. 그것을 몸에 지녀라.', author: '엘버트 허버드' },
+  { text: '지식에 투자하는 것이 가장 높은 이자를 낳는다.', author: '벤저민 프랭클린' },
+  { text: '오늘 할 수 있는 일을 내일로 미루지 마라.', author: '벤저민 프랭클린' },
+  { text: '준비에 실패하는 것은 실패를 준비하는 것이다.', author: '벤저민 프랭클린' },
+  { text: '운명을 사랑하라. 일어나는 모든 일이 너를 위한 것이다.', author: '에픽테토스' },
+  { text: '중요한 것은 무슨 일이 일어나는가가 아니라, 그것에 어떻게 반응하는가이다.', author: '에픽테토스' },
+  { text: '우리를 괴롭히는 것은 사건이 아니라, 그 사건에 대한 우리의 판단이다.', author: '에픽테토스' },
+  { text: '어려운 일을 먼저 하라. 쉬운 일은 저절로 풀린다.', author: '세네카' },
+  { text: '시간을 어떻게 쓰는가가 곧 삶을 어떻게 쓰는가이다.', author: '세네카' },
+  { text: '우리는 가진 것이 적어서가 아니라, 더 많이 바라기 때문에 가난하다.', author: '세네카' },
+  { text: '할 일을 미루는 사이, 삶은 빠르게 지나간다.', author: '세네카' },
+  { text: '성공은 최종이 아니고, 실패는 치명이 아니다. 중요한 건 계속하는 용기다.', author: '윈스턴 처칠' },
+  { text: '비관주의자는 모든 기회에서 어려움을 보고, 낙관주의자는 모든 어려움에서 기회를 본다.', author: '윈스턴 처칠' },
+  { text: '위대한 일을 하는 유일한 방법은 자신이 하는 일을 사랑하는 것이다.', author: '스티브 잡스' },
+  { text: '오늘이 인생의 마지막 날이라면, 지금 하려는 일을 할 것인가?', author: '스티브 잡스' },
+  { text: '할 수 없다고 생각하는 동안에는 사실 그것을 하기 싫은 것이다.', author: '스피노자' },
+  { text: '행동은 모든 성공의 기초적 열쇠다.', author: '파블로 피카소' },
+  { text: '당신이 할 수 있거나 꿈꿀 수 있는 모든 것을 시작하라. 대담함 속에 천재성과 힘이 있다.', author: '괴테' },
+  { text: '아는 것만으로는 충분치 않다. 적용해야 한다. 의지만으로는 충분치 않다. 행동해야 한다.', author: '괴테' },
+  { text: '인생에서 가장 큰 위험은 아무 위험도 감수하지 않는 것이다.', author: '작자 미상' },
+  { text: '넘어지는 것은 실패가 아니다. 넘어진 자리에 머무는 것이 실패다.', author: '작자 미상' },
+  { text: '포기하지 마라. 고통은 잠시지만 포기는 영원하다.', author: '작자 미상' },
+  { text: '가장 어두운 밤도 끝이 나고, 해는 떠오른다.', author: '빅토르 위고' },
+  { text: '작게 시작하라. 하지만 시작하라.', author: '작자 미상' },
+  { text: '지금 심는 씨앗이 내일의 숲이 된다.', author: '작자 미상' },
 ];
 
 function starStr(v: number): string {
@@ -242,10 +278,6 @@ export default function Home() {
       return;
     }
     const q = currentQuad(urgent, important);
-    if (tasks[q].length >= 7) {
-      setError('이 칸은 꽉 찼어요 (최대 7개).');
-      return;
-    }
     const { data, error: err } = await supabase
       .from('todos')
       .insert({
@@ -355,6 +387,17 @@ export default function Home() {
           </div>
         </div>
 
+        <div
+          className="quote-box"
+          onClick={() => { advanceQuote(); resetQuoteTimer(); }}
+          title="클릭하면 다음 명언"
+        >
+          <div className={`quote-fade${quoteVisible ? '' : ' fade-out'}`}>
+            <p className="quote-text">&#8220;{QUOTES[quoteIdx].text}&#8221;</p>
+            <span className="quote-attr">— {QUOTES[quoteIdx].author}</span>
+          </div>
+        </div>
+
         <div className="stats">
           <span>전체 <b>{total}</b>개</span>
           <span>완료 <b className="done-n">{doneCount}</b>개</span>
@@ -438,7 +481,7 @@ export default function Home() {
               <div key={q} className={`quad ${q}`} onClick={() => setPanelQuad(q)}>
                 <div className="quad-title">{info.title}</div>
                 <div className="quad-sub">{info.sub}</div>
-                <div className="quad-cnt">{tasks[q].length} / 7</div>
+                <div className="quad-cnt">{tasks[q].filter(t => !t.done).length} / {tasks[q].length}</div>
                 <div className="quad-list">
                   {sorted.length === 0 ? (
                     <div className="empty">할 일 없음</div>
@@ -459,16 +502,6 @@ export default function Home() {
           })}
         </div>
 
-        <div
-          className="quote-box"
-          onClick={() => { advanceQuote(); resetQuoteTimer(); }}
-          title="클릭하면 다음 명언"
-        >
-          <div className={`quote-fade${quoteVisible ? '' : ' fade-out'}`}>
-            <p className="quote-text">&#8220;{QUOTES[quoteIdx]}&#8221;</p>
-            <span className="quote-attr">— 프리드리히 니체</span>
-          </div>
-        </div>
       </div>
 
       {planTask && (
