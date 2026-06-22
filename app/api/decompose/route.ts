@@ -6,42 +6,25 @@ const MODEL = 'llama-3.3-70b-versatile';
 function buildPrompt(text: string, backgroundNote: string): string {
   const bgLine = backgroundNote.trim() ? `배경/상황: "${backgroundNote.trim()}"` : '';
 
-  return `당신은 실행 분해 코치입니다. 아래 과제를 아이젠하워 매트릭스 + 제임스 클리어의 아토믹 해빗 철학으로 분해하세요.
+  return `당신은 실행 코치입니다. 아래 과제를 오늘 당장 실행할 수 있도록 순서대로 단계(steps)로 분해하세요.
 
 과제: "${text}"
 ${bgLine}
 
 [출력 규칙]
-1. identity: "나는 ... 사람이다" 형식으로 이 과제를 해내는 사람의 정체성 한 문장. 거창하지 않고 진짜 동기를 파는 문장으로.
-
-2. 4사분면 분해 (각 1~2개):
-   - q1: 급하고 중요한 일 (당장 오늘 손댈 수 있는 것)
-   - q2: 급하진 않지만 중요한 일 (삶을 바꾸는 반복 행동)
-   - q3: 급하지만 중요치 않은 일 (자동화하거나 줄일 것)
-   - q4: 급하지도 중요하지도 않은 일 (당장 없애거나 무시할 것)
-
-3. 2분 규칙 — q1·q2 항목 끝에는 반드시 "(2분: [아주 작은 첫 행동])" 추가.
-   좋은 예: "1688에서 관심 품목 3개 검색하기 (2분: 검색창에 단어 하나만 쳐보기)"
-   나쁜 예: "(2분: 시작하기)" — 너무 막연함
-
-4. 습관 쌓기 — q2 항목 중 반복적인 것은 "기존 습관 → 새 행동 (2분: ...)" 형식.
-   예: "아침 커피 내린 후 → 잘 팔리는 상품 1개 분석하기 (2분: 리뷰 많은 상품 1개만 클릭)"
-
-5. 절대 금지:
-   - "열심히 한다", "전략을 수립한다", "꾸준히 한다" 같은 교과서 일반론
-   - 대기업 기준의 거창한 항목
-   - 과제와 무관한 뻔한 조언
-   → 이 과제와 배경에 딱 맞춰서, 오늘 당장 손댈 수 있는 현실적 수준으로.
-
-6. 배경 메모가 있으면 그 맥락(1인 운영, 자본 적음, 초보 등)을 100% 반영.
-
-7. 한국어로, 각 항목 간결하게(50자 이내 권장). 잔소리 없이 행동 중심.
+- 3~7개의 순차 실행 단계로 나눌 것
+- 첫 단계는 2분 안에 시작할 수 있는 아주 작은 행동으로
+- 각 단계는 구체적이고 행동 중심 (50자 이내 권장)
+- "열심히 한다", "계획을 수립한다", "꾸준히 한다" 같은 교과서 일반론 금지
+- 배경이 있으면 그 맥락에 맞게 현실적으로 작성
+- 반드시 자연스러운 한국어로만 작성. 한자·일본어 문자 절대 금지 (예: "開く" 대신 "열기")
+- 단계는 3~6개로 묶을 것. "노트북 열기", "인터넷 연결 확인" 같이 자명한 동작은 생략하거나 다음 단계에 합칠 것. 실제 결과를 만드는 핵심 행동 위주로만 나눌 것
 
 참고 예시 (과제: "씨유 알바 줄이고 온라인 셀러로 전환하기"):
-{"identity":"나는 스스로 돈 버는 구조를 만드는 사람이다","q1":["1688에서 관심 품목 3개 장바구니에 담기 (2분: 검색창에 한 단어 쳐보기)"],"q2":["아침 커피 내린 후 → 잘 팔리는 상품 1개 분석하기 (2분: 리뷰 많은 상품 1개만 클릭)","스마트스토어 상품 1개 등록 연습하기 (2분: 상품명 초안만 입력)"],"q3":["주문 들어오면 발송하는 무재고 흐름 자동화하기"],"q4":["마진 안 나오는 품목 리스트에서 지우기"]}
+{"steps":["1688 검색창에 관심 키워드 하나 입력해보기","리뷰 많은 상품 1개 클릭해서 가격·마진 구조 파악하기","스마트스토어에서 상품명 초안 1개 입력해보기","무재고 발송 흐름 유튜브 영상 1개 보기","첫 상품 등록 완료 후 지인 1명에게 링크 공유하기"]}
 
 반드시 아래 JSON 형식만 응답. 다른 텍스트 절대 없이.
-{"identity":"...","q1":["..."],"q2":["..."],"q3":["..."],"q4":["..."]}`;
+{"steps":["...","...","..."]}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -88,22 +71,59 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: 'AI 응답을 파싱할 수 없습니다.' }, { status: 502 });
   }
 
-  let parsed: { identity?: unknown; q1?: unknown; q2?: unknown; q3?: unknown; q4?: unknown };
+  let parsed: { steps?: unknown };
   try { parsed = JSON.parse(jsonMatch[0]); } catch {
     return Response.json({ error: 'AI 응답 파싱 실패' }, { status: 502 });
   }
 
-  if (typeof parsed.identity !== 'string' || !Array.isArray(parsed.q1)) {
+  if (!Array.isArray(parsed.steps) || parsed.steps.length === 0) {
     return Response.json({ error: 'AI가 올바른 형식으로 응답하지 못했습니다. 다시 시도해주세요.' }, { status: 502 });
   }
 
-  const toStrArr = (v: unknown) => Array.isArray(v) ? (v as unknown[]).map(t => String(t)) : [];
+  const steps = (parsed.steps as unknown[]).map(t => String(t));
+  const refinedSteps = await refineIfNeeded(steps, apiKey);
 
-  return Response.json({
-    identity: parsed.identity,
-    q1: toStrArr(parsed.q1),
-    q2: toStrArr(parsed.q2),
-    q3: toStrArr(parsed.q3),
-    q4: toStrArr(parsed.q4),
-  });
+  return Response.json({ steps: refinedSteps });
+}
+
+// CJK 한자(U+4E00–U+9FFF 등) 또는 일본어 가나(U+3040–U+30FF) 포함 여부
+function hasCJK(str: string): boolean {
+  return /[぀-ヿ一-鿿㐀-䶿豈-﫿]/.test(str);
+}
+
+async function refineIfNeeded(steps: string[], apiKey: string): Promise<string[]> {
+  if (!steps.some(hasCJK)) return steps;
+
+  const prompt = `아래 문장들을 의미를 유지한 채 100% 자연스러운 한국어로만 다시 써라. 한자·일본어 문자 절대 금지. 문장 수와 순서는 그대로 유지.
+
+${steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+반드시 아래 JSON 형식만 응답. 다른 텍스트 절대 없이.
+{"steps":["...","..."]}`;
+
+  try {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 700,
+      }),
+    });
+    if (!res.ok) return steps;
+
+    const data = await res.json();
+    const raw: string = data?.choices?.[0]?.message?.content ?? '';
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return steps;
+
+    const refined: { steps?: unknown } = JSON.parse(match[0]);
+    if (!Array.isArray(refined.steps) || refined.steps.length === 0) return steps;
+
+    return (refined.steps as unknown[]).map(t => String(t));
+  } catch {
+    return steps;
+  }
 }

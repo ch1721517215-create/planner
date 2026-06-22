@@ -27,24 +27,12 @@ type Props = {
 };
 
 type DecomposeResult = {
-  identity: string;
-  q1: string[];
-  q2: string[];
-  q3: string[];
-  q4: string[];
+  steps: string[];
 };
-
-const QUAD_SECTIONS: { key: keyof Omit<DecomposeResult, 'identity'>; label: string; sub: string; cls: string }[] = [
-  { key: 'q1', label: '🔴 당장 해야할 일', sub: '급하고 중요', cls: 'dq-red' },
-  { key: 'q2', label: '🟣 삶을 바꾸는 일', sub: '급하진 않지만 중요', cls: 'dq-purple' },
-  { key: 'q3', label: '🟡 자동화시켜야 되는 일', sub: '급하지만 중요치 않음', cls: 'dq-yellow' },
-  { key: 'q4', label: '⬜ 없애야 할 일', sub: '급하지도 중요하지도 않음', cls: 'dq-gray' },
-];
 
 export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSaved }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [backgroundNote, setBackgroundNote] = useState(task.background_note ?? '');
-  const [decompose, setDecompose] = useState<DecomposeResult | null>(null);
   const [decomposeLoading, setDecomposeLoading] = useState(false);
   const [decomposeError, setDecomposeError] = useState('');
   const backgroundNoteRef = useRef(task.background_note ?? '');
@@ -55,7 +43,6 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
     const note = task.background_note ?? '';
     setBackgroundNote(note);
     backgroundNoteRef.current = note;
-    setDecompose(null);
     setDecomposeError('');
   }, [task.id]);
 
@@ -104,45 +91,10 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
     persist(editor.getJSON());
   }
 
-  function handleAddToMemo() {
-    if (!editor || !decompose) return;
-    const end = editor.state.doc.content.size;
-
-    const nodes: object[] = [
-      { type: 'paragraph' },
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'bold' }], text: '🧩 AI 실행 분해 (아토믹 해빗)' }],
-      },
-      {
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'italic' }], text: `💬 ${decompose.identity}` }],
-      },
-    ];
-
-    for (const section of QUAD_SECTIONS) {
-      const items = decompose[section.key];
-      if (items.length === 0) continue;
-      nodes.push({
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'bold' }], text: `${section.label} (${section.sub})` }],
-      });
-      nodes.push({
-        type: 'bulletList',
-        content: items.map(item => ({
-          type: 'listItem',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: item }] }],
-        })),
-      });
-    }
-
-    editor.chain().focus().insertContentAt(end, nodes).run();
-  }
-
   async function handleDecompose() {
+    if (!editor) return;
     setDecomposeLoading(true);
     setDecomposeError('');
-    setDecompose(null);
     try {
       const res = await fetch('/api/decompose', {
         method: 'POST',
@@ -151,7 +103,23 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
       });
       const data = await res.json();
       if (!res.ok) { setDecomposeError(data.error ?? 'AI 오류가 발생했어요.'); return; }
-      setDecompose(data as DecomposeResult);
+      const result = data as DecomposeResult;
+      const end = editor.state.doc.content.size;
+      const nodes: object[] = [
+        { type: 'paragraph' },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', marks: [{ type: 'bold' }], text: '🧩 AI 실행 단계' }],
+        },
+        {
+          type: 'orderedList',
+          content: result.steps.map(step => ({
+            type: 'listItem',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: step }] }],
+          })),
+        },
+      ];
+      editor.chain().focus().insertContentAt(end, nodes).run();
     } catch {
       setDecomposeError('네트워크 오류가 발생했어요.');
     } finally {
@@ -211,49 +179,8 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
             >
               {decomposeLoading ? '분해하는 중...' : '🧩 AI로 실행 분해하기'}
             </button>
-            {decompose && !decomposeLoading && (
-              <button
-                className="ai-tips-btn ai-tips-retry"
-                onClick={handleDecompose}
-                disabled={decomposeLoading}
-                title="다시 생성하기"
-              >
-                ↺ 재생성
-              </button>
-            )}
             {decomposeError && <span className="tips-err">{decomposeError}</span>}
           </div>
-
-          {decompose && (
-            <div className="decompose-result">
-              <div className="decompose-identity">
-                <span className="decompose-identity-badge">정체성</span>
-                <span className="decompose-identity-text">{decompose.identity}</span>
-              </div>
-              <div className="decompose-quads">
-                {QUAD_SECTIONS.map(section => {
-                  const items = decompose[section.key];
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={section.key} className={`decompose-quad ${section.cls}`}>
-                      <div className="decompose-quad-header">
-                        <span className="decompose-quad-label">{section.label}</span>
-                        <span className="decompose-quad-sub">{section.sub}</span>
-                      </div>
-                      <ul className="decompose-items">
-                        {items.map((item, i) => (
-                          <li key={i} className="decompose-item">{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-              <button className="tips-add-btn" onClick={handleAddToMemo}>
-                📥 메모에 추가
-              </button>
-            </div>
-          )}
         </div>
 
         {/* 툴바 */}
