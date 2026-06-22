@@ -14,6 +14,7 @@
   --q2: #a89cf0;
   --q3: #f0a020;
   --q4: #e0392f;
+  --grid-gap: 1rem;
 }
 
 html {
@@ -98,7 +99,7 @@ body {
 .ai-btn.loading { opacity: 0.6; cursor: not-allowed; }
 .ai-hint { font-size: 13px; color: #5040a8; margin-top: 6px; line-height: 1.4; }
 
-.matrix { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 14px; flex: 1; min-height: 300px; }
+.matrix { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: var(--grid-gap); flex: 1; min-height: 300px; }
 .quad { background: var(--card); border-radius: 12px; padding: 16px; cursor: pointer; min-height: 0; display: flex; flex-direction: column; transition: transform 0.1s; box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.10); }
 .quad:hover { transform: translateY(-2px); }
 .quad.q1 { border-left: 5px solid var(--q1); }
@@ -128,6 +129,7 @@ body {
   border-radius: 12px;
   padding: 16px 28px;
   margin-top: 14px;
+  margin-bottom: 7px;
   text-align: center;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
