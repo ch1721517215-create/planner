@@ -12,6 +12,7 @@ type Task = {
   due_date: string;
   importance: number;
   done: boolean;
+  done_at?: string | null;
   plan_content?: unknown;
   background_note?: string | null;
 };
@@ -40,6 +41,14 @@ const QUAD_INFO: Record<QuadKey, { title: string; sub: string }> = {
 };
 
 const QUADS: QuadKey[] = ['q1', 'q2', 'q3', 'q4'];
+
+// 완료 통계 박스용 사분면 라벨·색상 정의
+const STAT_QUADS: { key: QuadKey; label: string; color: string }[] = [
+  { key: 'q1', label: '당장 해야할 일',      color: '#E24B4A' },
+  { key: 'q2', label: '나와 삶을 바꾸는 일', color: '#1D9E75' },
+  { key: 'q3', label: '자동화시켜야 되는 일', color: '#378ADD' },
+  { key: 'q4', label: '없애야 할 일',         color: '#888780' },
+];
 
 const QUOTES: { text: string; author: string }[] = [
   { text: '이것이 나의 길이다. 너의 길은 어디 있는가?', author: '프리드리히 니체' },
@@ -142,6 +151,7 @@ function rowToTask(row: Record<string, unknown>): Task {
     done: row.done as boolean,
     plan_content: row.plan_content,
     background_note: (row.background_note as string) ?? null,
+    done_at: (row.done_at as string) ?? null,
   };
 }
 
@@ -158,6 +168,14 @@ export default function Home() {
   const [panelQuad, setPanelQuad] = useState<QuadKey | null>(null);
   const [planTask, setPlanTask] = useState<Task | null>(null);
   const [error, setError] = useState('');
+  // 필수 입력 검증: 어느 필드가 비었는지 추적
+  const [formErrors, setFormErrors] = useState<{ text?: boolean; date?: boolean; stars?: boolean; quad?: boolean }>({});
+  // 사용자가 분류 토글을 한 번이라도 건드렸는지 (AI 분류도 포함)
+  const [classifyTouched, setClassifyTouched] = useState(false);
+  // 완료 통계: 펼쳐진 사분면, 전체 보기 중인 사분면, 기간 필터
+  const [statsExpanded, setStatsExpanded] = useState<QuadKey | null>(null);
+  const [statsShowAll, setStatsShowAll] = useState<QuadKey | null>(null);
+  const [statsFilter, setStatsFilter] = useState<'all' | 'week' | 'month'>('all');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiHint, setAiHint] = useState('');
   const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
@@ -189,7 +207,7 @@ export default function Home() {
     async function loadTasks() {
       const { data } = await supabase
         .from('todos')
-        .select('id, text, quadrant, importance, due_date, done, plan_content, background_note')
+        .select('id, text, quadrant, importance, due_date, done, done_at, plan_content, background_note')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: true });
       if (!data) return;
@@ -240,6 +258,36 @@ export default function Home() {
     });
   });
 
+  // KST(+9h) 기준 이번 주 월요일 00:00, 이번 달 1일 00:00 계산
+  const KST = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(Date.now() + KST);
+  const kstWeekStart = (() => {
+    const d = new Date(kstNow);
+    const dow = d.getUTCDay(); // 0=일, 1=월 ... 6=토
+    d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+    d.setUTCHours(0, 0, 0, 0);
+    return new Date(d.getTime() - KST); // UTC로 환산
+  })();
+  const kstMonthStart = (() => {
+    const d = new Date(kstNow);
+    d.setUTCDate(1);
+    d.setUTCHours(0, 0, 0, 0);
+    return new Date(d.getTime() - KST);
+  })();
+
+  // 선택한 기간에 해당하는 완료 항목인지 판별
+  // done_at이 null인 항목은 '이번 주'/'이번 달'에서 제외, '전체'에서만 포함
+  function inStatsFilter(t: Task): boolean {
+    if (!t.done) return false;
+    if (statsFilter === 'all') return true;
+    if (!t.done_at) return false;
+    const d = new Date(t.done_at);
+    return statsFilter === 'week' ? d >= kstWeekStart : d >= kstMonthStart;
+  }
+
+  // 필터 적용 후 총 완료 수
+  const filteredDoneCount = QUADS.reduce((s, q) => s + tasks[q].filter(inStatsFilter).length, 0);
+
   async function handleAiClassify() {
     const text = inputText.trim();
     if (!text) {
@@ -262,6 +310,9 @@ export default function Home() {
       }
       setUrgent(data.urgent);
       setImportant(data.important);
+      // AI 분류도 사용자가 선택한 것으로 인정
+      setClassifyTouched(true);
+      setFormErrors(prev => ({ ...prev, quad: false }));
       setAiHint(`✨ AI 분류: ${data.reason}`);
     } catch {
       setError('네트워크 오류가 발생했어요. 다시 시도해주세요.');
@@ -273,18 +324,31 @@ export default function Home() {
   async function handleSubmit() {
     if (!user) return;
     const text = inputText.trim();
-    if (!text) {
-      setError('할 일 내용을 입력해 주세요.');
+
+    // 필수 항목 일괄 검증
+    const errs: typeof formErrors = {};
+    const missing: string[] = [];
+    if (!text)             { errs.text  = true; missing.push('할 일 제목'); }
+    if (!inputDate)        { errs.date  = true; missing.push('마감 날짜'); }
+    if (stars === 0)       { errs.stars = true; missing.push('중요도'); }
+    if (!classifyTouched)  { errs.quad  = true; missing.push('분류'); }
+
+    if (missing.length > 0) {
+      setFormErrors(errs);
+      setError(`${missing.join(' · ')}을(를) 입력해 주세요.`);
       return;
     }
+
+    setFormErrors({});
+    setError('');
     const q = currentQuad(urgent, important);
     const { data, error: err } = await supabase
       .from('todos')
       .insert({
         text,
         quadrant: q,
-        importance: stars || 1,
-        due_date: inputDate || null,
+        importance: stars,   // 검증으로 1 이상 보장됨
+        due_date: inputDate,
         done: false,
         user_id: user.id,
       })
@@ -298,11 +362,14 @@ export default function Home() {
       ...prev,
       [q]: [...prev[q], rowToTask(data)],
     }));
+    // 폼 초기화
     setInputText('');
     setInputDate('');
     setStars(0);
     setUrgent(false);
     setImportant(false);
+    setClassifyTouched(false);
+    setFormErrors({});
     setError('');
     setAiHint('');
     setFormOpen(false);
@@ -312,10 +379,13 @@ export default function Home() {
     const task = tasks[q].find(t => t.id === id);
     if (!task) return;
     const newDone = !task.done;
-    await supabase.from('todos').update({ done: newDone }).eq('id', id);
+    // 완료로 바꿀 때는 현재 시각을, 미완료로 되돌릴 때는 null을 저장
+    const doneAt = newDone ? new Date().toISOString() : null;
+    await supabase.from('todos').update({ done: newDone, done_at: doneAt }).eq('id', id);
+    // 로컬 상태에도 done_at 반영 (통계 목록 즉시 갱신)
     setTasks(prev => ({
       ...prev,
-      [q]: prev[q].map(t => t.id === id ? { ...t, done: newDone } : t),
+      [q]: prev[q].map(t => t.id === id ? { ...t, done: newDone, done_at: doneAt } : t),
     }));
   }
 
@@ -404,6 +474,93 @@ export default function Home() {
           <span>마감임박 <b className="soon-n">{soonCount}</b>개</span>
         </div>
 
+        {/* 완료 통계 박스 */}
+        <div className="completion-stats">
+          <div className="cs-header">
+            <span className="cs-title">완료 통계</span>
+            <span className="cs-total">총 완료 <b>{filteredDoneCount}</b>개</span>
+          </div>
+
+          {/* 기간 필터 버튼 */}
+          <div className="cs-filter-row">
+            {(['week', 'month', 'all'] as const).map(f => (
+              <button
+                key={f}
+                className={`cs-filter-btn${statsFilter === f ? ' active' : ''}`}
+                onClick={() => {
+                  // 필터 변경 시 펼침 상태 초기화
+                  setStatsFilter(f);
+                  setStatsExpanded(null);
+                  setStatsShowAll(null);
+                }}
+              >
+                {f === 'week' ? '이번 주' : f === 'month' ? '이번 달' : '전체'}
+              </button>
+            ))}
+          </div>
+
+          {filteredDoneCount === 0 ? (
+            // 전체 필터일 때와 기간 필터일 때 안내 문구 구분
+            <div className="cs-empty">
+              {statsFilter === 'all' ? '아직 완료한 일이 없어요' : '이 기간에 완료한 일이 없어요'}
+            </div>
+          ) : (
+            <div className="cs-bars">
+              {STAT_QUADS.map(({ key, label, color }) => {
+                // 기간 필터 적용 후 해당 사분면 완료 항목
+                const doneTasks = tasks[key].filter(inStatsFilter);
+                const count = doneTasks.length;
+                const pct = Math.round(count / filteredDoneCount * 100);
+                const isExpanded = statsExpanded === key;
+                // 최근 완료순 정렬 (done_at 없는 항목은 뒤로)
+                const sorted = [...doneTasks].sort((a, b) => {
+                  if (!a.done_at && !b.done_at) return 0;
+                  if (!a.done_at) return 1;
+                  if (!b.done_at) return -1;
+                  return new Date(b.done_at).getTime() - new Date(a.done_at).getTime();
+                });
+                const showAll = statsShowAll === key;
+                const visible = showAll ? sorted : sorted.slice(0, 5);
+                const remaining = sorted.length - 5;
+                return (
+                  <div key={key} className="cs-quad-section">
+                    <div
+                      className="cs-bar-row"
+                      onClick={() => {
+                        // 같은 사분면 재클릭 시 접기, 다른 사분면 클릭 시 펼치기
+                        setStatsExpanded(prev => prev === key ? null : key);
+                        if (statsShowAll === key) setStatsShowAll(null);
+                      }}
+                    >
+                      <span className="cs-bar-label">{label}</span>
+                      <div className="cs-bar-track">
+                        <div className="cs-bar-fill" style={{ width: `${pct}%`, background: color }} />
+                      </div>
+                      <span className="cs-bar-info">{count}개 · {pct}%</span>
+                    </div>
+                    {isExpanded && count > 0 && (
+                      <div className="cs-tasks">
+                        {visible.map(t => (
+                          <div key={t.id} className="cs-task-item">{t.text}</div>
+                        ))}
+                        {/* 5개 초과 시 "더 보기" 버튼 */}
+                        {!showAll && remaining > 0 && (
+                          <button
+                            className="cs-more-btn"
+                            onClick={e => { e.stopPropagation(); setStatsShowAll(key); }}
+                          >
+                            + {remaining}개 더 보기
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className={`form-box${formOpen ? ' open' : ''}`}>
           <div className="field">
             <label>할 일</label>
@@ -412,7 +569,13 @@ export default function Home() {
                 type="text"
                 placeholder="무엇을 해야 하나요?"
                 value={inputText}
-                onChange={e => { setInputText(e.target.value); setAiHint(''); }}
+                className={formErrors.text ? 'field-err' : ''}
+                onChange={e => {
+                  setInputText(e.target.value);
+                  setAiHint('');
+                  // 입력하는 순간 해당 필드 에러 해제
+                  if (formErrors.text) setFormErrors(prev => ({ ...prev, text: false }));
+                }}
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
               <button
@@ -433,17 +596,25 @@ export default function Home() {
               <input
                 type="date"
                 value={inputDate}
-                onChange={e => setInputDate(e.target.value)}
+                className={formErrors.date ? 'field-err' : ''}
+                onChange={e => {
+                  setInputDate(e.target.value);
+                  if (formErrors.date) setFormErrors(prev => ({ ...prev, date: false }));
+                }}
               />
             </div>
             <div className="field">
               <label>중요도</label>
-              <div className="stars">
+              {/* 에러 시 별 컨테이너에 강조 클래스 추가 */}
+              <div className={`stars${formErrors.stars ? ' field-err-stars' : ''}`}>
                 {[1, 2, 3].map(v => (
                   <span
                     key={v}
                     className={`star${stars >= v ? ' on' : ''}`}
-                    onClick={() => setStars(v)}
+                    onClick={() => {
+                      setStars(v);
+                      if (formErrors.stars) setFormErrors(prev => ({ ...prev, stars: false }));
+                    }}
                   >
                     ★
                   </span>
@@ -453,16 +624,26 @@ export default function Home() {
           </div>
           <div className="field">
             <label>분류 (급함 / 중요)</label>
-            <div className="toggles">
+            {/* 에러 시 토글 컨테이너에 강조 클래스 추가 */}
+            <div className={`toggles${formErrors.quad ? ' field-err-toggles' : ''}`}>
               <div
                 className={`toggle${urgent ? ' on' : ''}`}
-                onClick={() => setUrgent(u => !u)}
+                onClick={() => {
+                  setUrgent(u => !u);
+                  // 토글을 건드린 것으로 인정, 에러 해제
+                  setClassifyTouched(true);
+                  if (formErrors.quad) setFormErrors(prev => ({ ...prev, quad: false }));
+                }}
               >
                 급함
               </div>
               <div
                 className={`toggle${important ? ' on' : ''}`}
-                onClick={() => setImportant(i => !i)}
+                onClick={() => {
+                  setImportant(i => !i);
+                  setClassifyTouched(true);
+                  if (formErrors.quad) setFormErrors(prev => ({ ...prev, quad: false }));
+                }}
               >
                 중요
               </div>

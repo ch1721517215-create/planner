@@ -92,6 +92,11 @@ body {
 .submit-btn:hover { background: #e84a2e; }
 .err { color: #dc2626; font-size: 13px; margin-top: 8px; }
 
+/* 필수 입력 검증 에러 강조 */
+.field input.field-err { border-color: #dc2626; background: #fff8f8; }
+.stars.field-err-stars .star:not(.on) { color: #f87171; }
+.toggles.field-err-toggles { outline: 2px solid #dc2626; border-radius: 9px; }
+
 .input-row { display: flex; gap: 8px; align-items: stretch; }
 .input-row input[type=text] { flex: 1; }
 .ai-btn { white-space: nowrap; padding: 10px 14px; border: 1.5px solid #7060d0; border-radius: 8px; background: rgba(112,96,208,0.10); color: #5040a8; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
@@ -438,6 +443,148 @@ body {
 .tf-btn.del { background: #f5d3cf; color: #a3271d; }
 .tf-btn.chk { background: #d5ecd9; color: #276749; }
 
+/* ── 완료 통계 박스 ──────────────────────────────────── */
+.completion-stats {
+  background: var(--bar);
+  backdrop-filter: blur(6px);
+  border-radius: 12px;
+  padding: 13px 20px;
+  margin-bottom: 3px;
+}
+
+.cs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+/* 기간 필터 버튼 */
+.cs-filter-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cs-filter-btn {
+  padding: 4px 13px;
+  border-radius: 6px;
+  border: 1.5px solid #90a8c8;
+  background: rgba(255,255,255,0.5);
+  color: #4a6080;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.cs-filter-btn:hover:not(.active) { background: rgba(144,168,200,0.18); }
+.cs-filter-btn.active {
+  background: #185FA5;
+  color: #fff;
+  border-color: #185FA5;
+}
+
+.cs-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2a52;
+}
+
+.cs-total {
+  font-size: 13px;
+  color: #2d4060;
+}
+
+.cs-total b { color: #16a34a; }
+
+.cs-empty {
+  font-size: 13px;
+  color: #a89a85;
+  font-style: italic;
+}
+
+.cs-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cs-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 7px;
+  transition: background 0.12s;
+}
+.cs-bar-row:hover { background: rgba(0,0,0,0.05); }
+
+.cs-bar-label {
+  font-size: 12px;
+  color: #2d4060;
+  width: 148px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cs-bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(0,0,0,0.09);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cs-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.cs-bar-info {
+  font-size: 12px;
+  color: #4a6080;
+  width: 68px;
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 펼쳐진 완료 목록 */
+.cs-tasks {
+  padding: 4px 6px 6px 164px; /* 라벨(148) + gap(10) + 좌측패딩(6) */
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cs-task-item {
+  font-size: 12px;
+  color: #3a5070;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 5px;
+  line-height: 1.45;
+}
+
+.cs-more-btn {
+  background: none;
+  border: none;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: #6080a0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  font-weight: 600;
+}
+.cs-more-btn:hover { color: #3a6090; text-decoration: underline; }
+
 @media (max-width: 520px) {
   body { padding: 12px; }
   .wrap { min-height: auto; }
@@ -448,6 +595,8 @@ body {
   .stats { gap: 14px; padding: 10px 14px; }
   .quote-box { padding: 14px 18px; }
   .quote-text { font-size: 14px; }
+  .cs-bar-label { width: 110px; }
+  .cs-tasks { padding-left: 126px; } /* 110 + 10 + 6 */
 }
 
 /* ── 할 일 제목 클릭 힌트 ─────────────────────────── */
