@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import PlanModal from './PlanModal';
+import EditModal from './EditModal';
 import AuthScreen from './AuthScreen';
 
 type Task = {
@@ -176,6 +177,7 @@ export default function Home() {
   const [statsExpanded, setStatsExpanded] = useState<QuadKey | null>(null);
   const [statsShowAll, setStatsShowAll] = useState<QuadKey | null>(null);
   const [statsFilter, setStatsFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [editTarget, setEditTarget] = useState<{ task: Task; quad: QuadKey } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiHint, setAiHint] = useState('');
   const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
@@ -417,6 +419,20 @@ export default function Home() {
       return updated;
     });
     setPlanTask(pt => pt && pt.id === id ? { ...pt, background_note: note } : pt);
+  }
+
+  function handleEditSaved(oldQuad: QuadKey, newQuad: QuadKey, updated: Task) {
+    setTasks(prev => {
+      const next = { ...prev };
+      if (oldQuad === newQuad) {
+        next[newQuad] = prev[newQuad].map(t => t.id === updated.id ? updated : t);
+      } else {
+        next[oldQuad] = prev[oldQuad].filter(t => t.id !== updated.id);
+        next[newQuad] = [...prev[newQuad], updated];
+      }
+      return next;
+    });
+    setPlanTask(pt => pt?.id === updated.id ? { ...pt, ...updated } : pt);
   }
 
   const panelTasks = panelQuad ? tasks[panelQuad] : [];
@@ -685,6 +701,15 @@ export default function Home() {
 
       </div>
 
+      {editTarget && (
+        <EditModal
+          task={editTarget.task}
+          quadrant={editTarget.quad}
+          onClose={() => setEditTarget(null)}
+          onSaved={handleEditSaved}
+        />
+      )}
+
       {planTask && (
         <PlanModal
           key={planTask.id}
@@ -733,6 +758,13 @@ export default function Home() {
                           onClick={() => panelQuad && handleToggleDone(panelQuad, t.id)}
                         >
                           {t.done ? '취소' : '완료'}
+                        </button>
+                        <button
+                          className="tf-btn edit"
+                          onClick={() => panelQuad && setEditTarget({ task: t, quad: panelQuad })}
+                          title="수정"
+                        >
+                          ✏️
                         </button>
                         <button
                           className="tf-btn del"
