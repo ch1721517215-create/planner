@@ -24,13 +24,14 @@ type Props = {
   onClose: () => void;
   onSaved: (id: string, content: unknown) => void;
   onBackgroundNoteSaved: (id: string, note: string) => void;
+  onHome?: () => void;
 };
 
 type DecomposeResult = {
   steps: string[];
 };
 
-export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSaved }: Props) {
+export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSaved, onHome }: Props) {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [backgroundNote, setBackgroundNote] = useState(task.background_note ?? '');
   const [decomposeLoading, setDecomposeLoading] = useState(false);
@@ -151,6 +152,7 @@ export default function PlanModal({ task, onClose, onSaved, onBackgroundNoteSave
           </div>
           <div className="plan-header-actions">
             {saveStatus === 'saved' && <span className="plan-saved-msg">저장 완료</span>}
+            {onHome && <button type="button" className="plan-home-btn" onClick={onHome}>🏠 홈</button>}
             <button type="button" className="plan-save-btn" onClick={handleManualSave}>저장</button>
             <button type="button" className="close-x" onClick={onClose}>&times;</button>
           </div>

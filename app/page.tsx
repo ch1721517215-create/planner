@@ -178,6 +178,7 @@ export default function Home() {
   const [statsShowAll, setStatsShowAll] = useState<QuadKey | null>(null);
   const [statsFilter, setStatsFilter] = useState<'all' | 'week' | 'month'>('all');
   const [editTarget, setEditTarget] = useState<{ task: Task; quad: QuadKey } | null>(null);
+  const [todayPanelOpen, setTodayPanelOpen] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiHint, setAiHint] = useState('');
   const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
@@ -203,6 +204,7 @@ export default function Home() {
       setTasks({ q1: [], q2: [], q3: [], q4: [] });
       setPanelQuad(null);
       setPlanTask(null);
+      setTodayPanelOpen(false);
       setFormOpen(false);
       return;
     }
@@ -248,17 +250,16 @@ export default function Home() {
   const quad = currentQuad(urgent, important);
   const quadHint = `→ ${QUAD_NAMES[quad]}`;
 
-  let total = 0, doneCount = 0, soonCount = 0;
+  const todayStr = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  let total = 0, doneCount = 0, todayCount = 0;
   QUADS.forEach(q => {
     tasks[q].forEach(t => {
       total++;
       if (t.done) doneCount++;
-      else {
-        const diff = dayDiff(t.due_date);
-        if (diff !== null && diff <= 1 && diff >= 0) soonCount++;
-      }
+      else if (t.due_date === todayStr) todayCount++;
     });
   });
+  const todayTasks = QUADS.flatMap(q => tasks[q].filter(t => !t.done && t.due_date === todayStr));
 
   // KST(+9h) 기준 이번 주 월요일 00:00, 이번 달 1일 00:00 계산
   const KST = 9 * 60 * 60 * 1000;
@@ -488,7 +489,12 @@ export default function Home() {
         <div className="stats">
           <span>전체 <b>{total}</b>개</span>
           <span>완료 <b className="done-n">{doneCount}</b>개</span>
-          <span>마감임박 <b className="soon-n">{soonCount}</b>개</span>
+          <span
+            className={todayCount > 0 ? 'stats-today' : ''}
+            onClick={() => { if (todayCount > 0) { setTodayPanelOpen(true); setPanelQuad(null); } }}
+          >
+            오늘 마감 <b className="today-n">{todayCount}</b>개
+          </span>
         </div>
 
         {/* 완료 통계 박스 */}
@@ -676,7 +682,7 @@ export default function Home() {
             const info = QUAD_INFO[q];
             const sorted = sortTasks(tasks[q].filter(t => !t.done));
             return (
-              <div key={q} className={`quad ${q}`} onClick={() => setPanelQuad(q)}>
+              <div key={q} className={`quad ${q}`} onClick={() => { setPanelQuad(q); setTodayPanelOpen(false); }}>
                 <div className="quad-title">{info.title}</div>
                 <div className="quad-sub">{info.sub}</div>
 
@@ -718,8 +724,45 @@ export default function Home() {
           onClose={() => setPlanTask(null)}
           onSaved={handlePlanSaved}
           onBackgroundNoteSaved={handleBackgroundNoteSaved}
+          onHome={() => { setPlanTask(null); setPanelQuad(null); setTodayPanelOpen(false); }}
         />
       )}
+
+      <div
+        className={`overlay${todayPanelOpen ? ' open' : ''}`}
+        onClick={e => { if (e.target === e.currentTarget) setTodayPanelOpen(false); }}
+      >
+        <div className="panel">
+          <div className="panel-head">
+            <h2>오늘 마감 — {todayStr}</h2>
+            <button className="close-x" onClick={() => setTodayPanelOpen(false)}>&times;</button>
+          </div>
+          <div>
+            {todayTasks.length === 0 ? (
+              <p className="empty">오늘 마감인 할 일이 없어요.</p>
+            ) : (
+              todayTasks.map(t => (
+                <div
+                  key={t.id}
+                  className="task-full today-task"
+                  onClick={() => setPlanTask(t)}
+                >
+                  <div className="tf-row">
+                    <span className="tf-title tf-title-link">
+                      {t.text}
+                      <span className="plan-badge">{t.plan_content ? '📋' : '+'}</span>
+                    </span>
+                    <span className="tf-stars">{starStr(t.importance)}</span>
+                  </div>
+                  <div className="tf-meta">
+                    <span>📅 {t.due_date}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       <div
         className={`overlay${panelQuad ? ' open' : ''}`}

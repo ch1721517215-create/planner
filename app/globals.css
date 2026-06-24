@@ -66,7 +66,9 @@ body {
 .stats { display: flex; gap: 22px; background: var(--bar); backdrop-filter: blur(6px); border-radius: 12px; padding: 13px 20px; margin-bottom: 3px; font-size: 14px; color: #2d4060; }
 .stats b { color: #1a2a52; }
 .stats .done-n { color: #16a34a; }
-.stats .soon-n { color: #b45309; }
+.stats .today-n { color: #dc2626; }
+.stats-today { cursor: pointer; }
+.stats-today:hover { opacity: 0.75; }
 
 .form-box { background: rgba(255,255,255,0.88); backdrop-filter: blur(8px); border-radius: 14px; padding: 18px; margin-bottom: 20px; display: none; }
 .form-box.open { display: block; }
@@ -639,6 +641,23 @@ body {
   padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .plan-save-btn:hover { background: #e84a2e; }
+.plan-home-btn {
+  background: rgba(255,255,255,0.25);
+  color: var(--card-text);
+  border: 1px solid #d0c0a8;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+.plan-home-btn:hover { background: rgba(255,255,255,0.55); }
+
+/* 오늘 마감 패널 — 클릭 가능한 task 카드 */
+.today-task { cursor: pointer; }
+.today-task:hover { background: #f5eed8; border-color: #c8b89a; }
 
 /* ── AI 실행 분해 섹션 ───────────────────────────────── */
 .plan-tips-section {
