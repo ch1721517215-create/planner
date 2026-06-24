@@ -435,7 +435,7 @@ export default function Home() {
     setPlanTask(pt => pt?.id === updated.id ? { ...pt, ...updated } : pt);
   }
 
-  const panelTasks = panelQuad ? tasks[panelQuad] : [];
+  const panelTasks = panelQuad ? tasks[panelQuad].filter(t => !t.done) : [];
 
   if (authLoading) return null;
   if (!user) return <AuthScreen />;
@@ -673,7 +673,7 @@ export default function Home() {
         <div className="matrix">
           {QUADS.map(q => {
             const info = QUAD_INFO[q];
-            const sorted = sortTasks(tasks[q]);
+            const sorted = sortTasks(tasks[q].filter(t => !t.done));
             return (
               <div key={q} className={`quad ${q}`} onClick={() => setPanelQuad(q)}>
                 <div className="quad-title">{info.title}</div>
