@@ -490,10 +490,13 @@ export default function Home() {
           <span>전체 <b>{total}</b>개</span>
           <span>완료 <b className="done-n">{doneCount}</b>개</span>
           <span
-            className={todayCount > 0 ? 'stats-today' : ''}
+            className={`stats-today-box${todayCount > 0 ? ' active' : ''}`}
+            role="button"
+            tabIndex={todayCount > 0 ? 0 : -1}
+            aria-label={`오늘 마감 ${todayCount}개`}
             onClick={() => { if (todayCount > 0) { setTodayPanelOpen(true); setPanelQuad(null); } }}
           >
-            오늘 마감 <b className="today-n">{todayCount}</b>개
+            <span className="stats-today-inner">오늘 마감 <b className="today-n">{todayCount}</b>개</span>
           </span>
         </div>
 
