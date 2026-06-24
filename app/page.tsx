@@ -454,7 +454,8 @@ export default function Home() {
       <div className="wrap">
         <div className="topbar">
           <div>
-            <div className="main-title">그대여 걱정하지 말아요.</div>
+            <div className="main-title">NEMO PLAN</div>
+            <div className="main-subtitle-kr">네모플랜</div>
             <div className="title">
               <span className="now">NOW.</span>{' '}
               <span className="must">MUST.</span>{' '}
