@@ -118,9 +118,7 @@ body {
 .quad.q1 .quad-sub { color: #3a7ca8; }
 .quad.q2 .quad-sub { color: #7a6cc4; }
 .quad.q3 .quad-sub { color: #c47d10; }
-.quad.q4 .quad-sub { color: #c0392b; }
-.quad-cnt { font-size: 11px; color: var(--card-sub); margin-bottom: 5px; }
-.quad-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.quad.q4 .quad-sub { color: #c0392b; }.quad-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
 .empty { font-size: 13px; color: #a89a85; font-style: italic; }
 
 .task-mini { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; color: var(--card-text); }

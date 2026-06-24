@@ -679,7 +679,7 @@ export default function Home() {
               <div key={q} className={`quad ${q}`} onClick={() => setPanelQuad(q)}>
                 <div className="quad-title">{info.title}</div>
                 <div className="quad-sub">{info.sub}</div>
-                <div className="quad-cnt">{tasks[q].filter(t => !t.done).length} / {tasks[q].length}</div>
+
                 <div className="quad-list">
                   {sorted.length === 0 ? (
                     <div className="empty">할 일 없음</div>
