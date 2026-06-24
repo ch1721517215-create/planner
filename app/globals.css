@@ -53,14 +53,16 @@ body {
 
 .wrap { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; display: flex; flex-direction: column; min-height: calc(100dvh - 40px); }
 .topbar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px; }
-.main-title { font-size: 39px; font-weight: 900; color: #1a2a52; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 2px; white-space: nowrap; }
+.header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.header-icon { width: 50px; height: 50px; display: block; flex-shrink: 0; }
+.main-title { font-size: 50px; font-weight: 900; color: #1a2a52; letter-spacing: -0.5px; line-height: 1; margin-bottom: 0; white-space: nowrap; }
 .main-subtitle-kr { font-size: 18px; font-weight: 800; color: #1a2a52; letter-spacing: 0.5px; margin-bottom: 4px; white-space: nowrap; }
 .title { font-size: 26px; font-weight: 700; letter-spacing: 1px; line-height: 1.15; white-space: nowrap; }
 .title .now { color: #0077cc; }
 .title .must { color: var(--accent); }
 .title .done { color: #b45309; }
 .subtitle { font-size: 12px; color: #4a6080; letter-spacing: 2px; margin-top: 4px; text-transform: uppercase; }
-.add-btn { background: var(--accent); color: #fff; border: none; padding: 11px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.add-btn { background: var(--accent); color: #fff; border: none; padding: 0 18px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .add-btn:hover { background: #e84a2e; }
 
 .stats { display: flex; gap: 22px; background: var(--bar); backdrop-filter: blur(6px); border-radius: 12px; padding: 13px 20px; margin-bottom: 3px; font-size: 14px; color: #2d4060; }
@@ -605,9 +607,11 @@ body {
   .wrap { min-height: auto; }
   .matrix { grid-template-columns: 1fr; grid-template-rows: repeat(4, 165px); flex: none; min-height: auto; gap: 10px; }
   .quad { padding: 12px; }
-  .main-title { font-size: 26px; }
+  .header-icon { width: 26px; height: 26px; }
+  .main-title { font-size: 26px; line-height: 1; }
   .main-subtitle-kr { font-size: 13px; }
   .title { font-size: 13px; letter-spacing: 0; }
+  .add-btn { height: 36px; }
   .stats { gap: 14px; padding: 10px 14px; }
   .quote-box { padding: 14px 18px; }
   .quote-text { font-size: 14px; }

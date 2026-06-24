@@ -455,7 +455,10 @@ export default function Home() {
       <div className="wrap">
         <div className="topbar">
           <div>
-            <div className="main-title">NEMO PLAN</div>
+            <div className="header-row">
+              <img src="/app-icon.png" alt="네모플랜" className="header-icon" />
+              <div className="main-title">NEMOPLAN</div>
+            </div>
             <div className="main-subtitle-kr">네모플랜</div>
             <div className="title">
               <span className="now">NOW.</span>{' '}
