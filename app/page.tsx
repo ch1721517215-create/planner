@@ -209,11 +209,15 @@ export default function Home() {
       return;
     }
     async function loadTasks() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('todos')
         .select('id, text, quadrant, importance, due_date, done, done_at, plan_content, background_note')
         .eq('user_id', user!.id)
         .order('created_at', { ascending: true });
+      if (error) {
+        console.error('loadTasks failed:', error);
+        return;
+      }
       if (!data) return;
       const organized: Tasks = { q1: [], q2: [], q3: [], q4: [] };
       for (const row of data) {
