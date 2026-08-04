@@ -19,7 +19,7 @@ export default function AboutPage() {
 
       <div className="space-y-8 leading-relaxed text-neutral-700">
         <p>
-          25년 동안 편의점을 운영했습니다. 그 시간 동안 늘 해야 할 일은
+          수년간 편의점을 운영했습니다. 그 시간 동안 늘 해야 할 일은
           명확했어요. 발주하고, 진열하고, 재고를 맞추고, 손님을 응대하는 것.
           우선순위를 고민할 필요가 별로 없었습니다. 순서는 이미 정해져
           있었으니까요.
